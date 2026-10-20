@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, type FormEvent } from 'react'
 import axios from 'axios'
 import { api } from '../api/api'
 import { useAuthStore } from '../store/authStore'
-import { FolderTree, Plus, ChevronRight, ChevronDown, Trash2, AlertCircle, ShieldAlert, CheckCircle2, X } from 'lucide-react'
+import { FolderTree, Plus, ChevronRight, ChevronDown, Trash2, AlertCircle, ShieldAlert, CheckCircle2, X, Edit3 } from 'lucide-react'
 
 export const Route = createFileRoute('/categories')({
   component: CategoriesPage,
@@ -24,11 +24,13 @@ function CategoryItem({
   canManage,
   onDelete,
   onAddChild,
+  onEdit,
 }: {
   node: CategoryNode
   canManage: boolean
   onDelete: (id: string) => void
   onAddChild: (parent: CategoryNode) => void
+  onEdit: (category: CategoryNode) => void
 }) {
   const [isOpen, setIsOpen] = useState(true)
   const hasChildren = node.children && node.children.length > 0
@@ -48,16 +50,32 @@ function CategoryItem({
             <div className="w-6" />
           )}
 
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-800 text-sm">{node.name}</span>
-            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono">
+          <div
+            onClick={() => canManage && onEdit(node)}
+            className={`flex items-center gap-2 ${canManage ? 'cursor-pointer group' : ''}`}
+            title={canManage ? 'Click to edit category' : undefined}
+          >
+            <span className="font-semibold text-slate-800 text-sm group-hover:text-blue-600 transition-colors">
+              {node.name}
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
               /{node.slug}
             </span>
+            {canManage && (
+              <Edit3 className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+            )}
           </div>
         </div>
 
         {canManage && (
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => onEdit(node)}
+              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+              title="Edit name and slug"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </button>
             <button
               onClick={() => onAddChild(node)}
               className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
@@ -85,6 +103,7 @@ function CategoryItem({
               canManage={canManage}
               onDelete={onDelete}
               onAddChild={onAddChild}
+              onEdit={onEdit}
             />
           ))}
         </div>
@@ -200,13 +219,133 @@ function CategoryModal({
   )
 }
 
+function EditCategoryModal({
+  category,
+  onClose,
+  onSubmit,
+  isPending,
+  errorMsg,
+}: {
+  category: CategoryNode
+  onClose: () => void
+  onSubmit: (data: { name: string; slug: string }) => void
+  isPending: boolean
+  errorMsg: string | null
+}) {
+  const [name, setName] = useState(category.name)
+  const [slug, setSlug] = useState(category.slug)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    if (!name.trim() || !slug.trim()) return
+    onSubmit({ name: name.trim(), slug: slug.trim() })
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">Edit Category</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Update display name and unique URL slug
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {errorMsg && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Category Name
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Unique Slug
+            </label>
+            <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+              <span className="text-slate-400 text-sm font-mono mr-1">/</span>
+              <input
+                type="text"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '-'))}
+                className="w-full text-sm font-mono focus:outline-none bg-transparent"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">Unique URL identifier (lowercase letters, numbers, hyphens)</p>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isPending}
+              className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !name.trim() || !slug.trim()}
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              {isPending ? 'Updating...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function CategoriesPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
 
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [modalParent, setModalParent] = useState<CategoryNode | null>(null)
+  const [editingCategory, setEditingCategory] = useState<CategoryNode | null>(null)
   const [modalError, setModalError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
@@ -230,7 +369,7 @@ function CategoriesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
-      setIsModalOpen(false)
+      setIsAddModalOpen(false)
       setModalParent(null)
       setModalError(null)
       setSuccessMsg('Category created successfully!')
@@ -238,6 +377,31 @@ function CategoriesPage() {
     },
     onError: (err: unknown) => {
       let msg = 'Failed to create category'
+      if (axios.isAxiosError(err) && err.response?.data?.errors) {
+        msg = typeof err.response.data.errors === 'string'
+          ? err.response.data.errors
+          : JSON.stringify(err.response.data.errors)
+      }
+      setModalError(msg)
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { name: string; slug: string } }) => {
+      const res = await api.put(`/api/v1/categories/${id}`, {
+        category: data,
+      })
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      setEditingCategory(null)
+      setModalError(null)
+      setSuccessMsg('Category updated successfully!')
+      setTimeout(() => setSuccessMsg(null), 3000)
+    },
+    onError: (err: unknown) => {
+      let msg = 'Failed to update category'
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg = typeof err.response.data.errors === 'string'
           ? err.response.data.errors
@@ -272,13 +436,18 @@ function CategoriesPage() {
   const handleOpenAddRoot = () => {
     setModalParent(null)
     setModalError(null)
-    setIsModalOpen(true)
+    setIsAddModalOpen(true)
   }
 
   const handleOpenAddChild = (parent: CategoryNode) => {
     setModalParent(parent)
     setModalError(null)
-    setIsModalOpen(true)
+    setIsAddModalOpen(true)
+  }
+
+  const handleOpenEdit = (category: CategoryNode) => {
+    setEditingCategory(category)
+    setModalError(null)
   }
 
   if (!token) {
@@ -353,16 +522,17 @@ function CategoriesPage() {
               canManage={canManage}
               onDelete={(id) => deleteMutation.mutate(id)}
               onAddChild={handleOpenAddChild}
+              onEdit={handleOpenEdit}
             />
           ))}
         </div>
       )}
 
       {/* Modal for Creating Category / Subcategory */}
-      {isModalOpen && (
+      {isAddModalOpen && (
         <CategoryModal
           parent={modalParent}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => setIsAddModalOpen(false)}
           onSubmit={(name) =>
             createMutation.mutate({
               name,
@@ -370,6 +540,22 @@ function CategoriesPage() {
             })
           }
           isPending={createMutation.isPending}
+          errorMsg={modalError}
+        />
+      )}
+
+      {/* Modal for Editing Category Name & Slug */}
+      {editingCategory && (
+        <EditCategoryModal
+          category={editingCategory}
+          onClose={() => setEditingCategory(null)}
+          onSubmit={(data) =>
+            updateMutation.mutate({
+              id: editingCategory.id,
+              data,
+            })
+          }
+          isPending={updateMutation.isPending}
           errorMsg={modalError}
         />
       )}

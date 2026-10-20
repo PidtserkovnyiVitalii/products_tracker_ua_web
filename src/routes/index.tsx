@@ -93,18 +93,24 @@ function DashboardPage() {
             <div className="mt-6 text-xs font-semibold text-emerald-600">View Locations &rarr;</div>
           </Link>
 
-          <div className="p-6 bg-white border border-dashed border-slate-200 rounded-2xl shadow-xs opacity-75 flex flex-col justify-between">
+          <Link
+            to="/products"
+            className="group p-6 bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:shadow-md hover:border-purple-400 transition-all flex flex-col justify-between"
+          >
             <div>
-              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
                 <Package className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-slate-700 text-lg">Products & Stock</h3>
-              <p className="text-slate-400 text-sm mt-1.5">
-                Coming next: product catalog linked to categories with location stock tracking.
+              <h3 className="font-bold text-slate-900 text-lg flex items-center justify-between">
+                Products & Stock
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors" />
+              </h3>
+              <p className="text-slate-500 text-sm mt-1.5">
+                Catalog items with category assignments and real-time inventory tracking across locations.
               </p>
             </div>
-            <div className="mt-6 text-xs font-semibold text-purple-400">In Development</div>
-          </div>
+            <div className="mt-6 text-xs font-semibold text-purple-600">Manage Catalog &rarr;</div>
+          </Link>
         </div>
       )}
     </div>
