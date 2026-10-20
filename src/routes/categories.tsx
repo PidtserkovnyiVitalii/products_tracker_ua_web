@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 import axios from 'axios'
 import { api } from '../api/api'
 import { useAuthStore } from '../store/authStore'
-import { FolderTree, Plus, ChevronRight, ChevronDown, Trash2, AlertCircle, ShieldAlert, CheckCircle2 } from 'lucide-react'
+import { FolderTree, Plus, ChevronRight, ChevronDown, Trash2, AlertCircle, ShieldAlert, CheckCircle2, X } from 'lucide-react'
 
 export const Route = createFileRoute('/categories')({
   component: CategoriesPage,
@@ -93,14 +93,121 @@ function CategoryItem({
   )
 }
 
+function CategoryModal({
+  parent,
+  onClose,
+  onSubmit,
+  isPending,
+  errorMsg,
+}: {
+  parent: CategoryNode | null
+  onClose: () => void
+  onSubmit: (name: string) => void
+  isPending: boolean
+  errorMsg: string | null
+}) {
+  const [name, setName] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) return
+    onSubmit(name.trim())
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">
+              {parent ? 'Add Subcategory' : 'New Root Category'}
+            </h3>
+            {parent && (
+              <p className="text-xs text-slate-500 mt-0.5">
+                Subcategory under <span className="font-semibold text-slate-700">"{parent.name}"</span>
+              </p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {errorMsg && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Category Name
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Lego & Construction Sets"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isPending}
+              className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !name.trim()}
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              {isPending ? 'Saving...' : parent ? 'Add Subcategory' : 'Create Category'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function CategoriesPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
 
-  const [selectedParent, setSelectedParent] = useState<CategoryNode | null>(null)
-  const [newCategoryName, setNewCategoryName] = useState('')
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalParent, setModalParent] = useState<CategoryNode | null>(null)
+  const [modalError, setModalError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   const canManage = user?.role === 'admin' || user?.role === 'stockkeeper'
@@ -123,18 +230,20 @@ function CategoriesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
-      setNewCategoryName('')
-      setSelectedParent(null)
+      setIsModalOpen(false)
+      setModalParent(null)
+      setModalError(null)
       setSuccessMsg('Category created successfully!')
-      setErrorMsg(null)
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: (err: unknown) => {
       let msg = 'Failed to create category'
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
-        msg = JSON.stringify(err.response.data.errors)
+        msg = typeof err.response.data.errors === 'string'
+          ? err.response.data.errors
+          : JSON.stringify(err.response.data.errors)
       }
-      setErrorMsg(msg)
+      setModalError(msg)
     },
   })
 
@@ -155,17 +264,21 @@ function CategoriesPage() {
           ? err.response.data.errors
           : JSON.stringify(err.response.data.errors)
       }
-      setErrorMsg(msg)
+      setSuccessMsg(null)
+      alert(msg)
     },
   })
 
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newCategoryName.trim()) return
-    createMutation.mutate({
-      name: newCategoryName.trim(),
-      parent_id: selectedParent?.id,
-    })
+  const handleOpenAddRoot = () => {
+    setModalParent(null)
+    setModalError(null)
+    setIsModalOpen(true)
+  }
+
+  const handleOpenAddChild = (parent: CategoryNode) => {
+    setModalParent(parent)
+    setModalError(null)
+    setIsModalOpen(true)
   }
 
   if (!token) {
@@ -201,10 +314,7 @@ function CategoriesPage() {
 
         {canManage && (
           <button
-            onClick={() => {
-              setSelectedParent(null)
-              setNewCategoryName('')
-            }}
+            onClick={handleOpenAddRoot}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -220,44 +330,6 @@ function CategoriesPage() {
         </div>
       )}
 
-      {errorMsg && (
-        <div className="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2.5 text-red-700 text-sm">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {/* Creation Box if canManage */}
-      {canManage && (
-        <form onSubmit={handleCreate} className="mb-8 p-4 bg-white border border-slate-200 rounded-2xl shadow-xs flex flex-col sm:flex-row items-center gap-3">
-          <div className="flex-1 w-full">
-            <input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              placeholder={selectedParent ? `Subcategory under "${selectedParent.name}"` : 'Category name (e.g. Beverages, Dairy)'}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          {selectedParent && (
-            <button
-              type="button"
-              onClick={() => setSelectedParent(null)}
-              className="text-xs text-slate-500 hover:text-slate-800"
-            >
-              Clear parent
-            </button>
-          )}
-          <button
-            type="submit"
-            disabled={createMutation.isPending || !newCategoryName.trim()}
-            className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer"
-          >
-            {createMutation.isPending ? 'Adding...' : selectedParent ? 'Add Subcategory' : 'Add Category'}
-          </button>
-        </form>
-      )}
-
       {isLoading ? (
         <div className="text-center py-12 text-slate-400">Loading categories...</div>
       ) : error ? (
@@ -268,7 +340,9 @@ function CategoriesPage() {
         <div className="text-center py-16 bg-white border border-dashed border-slate-300 rounded-2xl">
           <FolderTree className="w-10 h-10 text-slate-300 mx-auto mb-2" />
           <h3 className="font-semibold text-slate-700">No categories found</h3>
-          <p className="text-sm text-slate-500 mt-1">Create your first category using the input above.</p>
+          <p className="text-sm text-slate-500 mt-1">
+            {canManage ? 'Click "New Root Category" to create your first category.' : 'No categories available yet.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-1">
@@ -278,10 +352,26 @@ function CategoriesPage() {
               node={root}
               canManage={canManage}
               onDelete={(id) => deleteMutation.mutate(id)}
-              onAddChild={(parent) => setSelectedParent(parent)}
+              onAddChild={handleOpenAddChild}
             />
           ))}
         </div>
+      )}
+
+      {/* Modal for Creating Category / Subcategory */}
+      {isModalOpen && (
+        <CategoryModal
+          parent={modalParent}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={(name) =>
+            createMutation.mutate({
+              name,
+              parent_id: modalParent?.id,
+            })
+          }
+          isPending={createMutation.isPending}
+          errorMsg={modalError}
+        />
       )}
     </div>
   )

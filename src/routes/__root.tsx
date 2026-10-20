@@ -31,29 +31,31 @@ function RootComponent() {
               <span>Products Tracker</span>
             </Link>
 
-            <nav className="hidden sm:flex items-center gap-1 text-sm font-medium">
-              <Link
-                to="/"
-                className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                Dashboard
-              </Link>
-              <Link
-                to="/categories"
-                className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
-              >
-                <FolderTree className="w-4 h-4" />
-                Categories
-              </Link>
-              <Link
-                to="/locations"
-                className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
-              >
-                <MapPin className="w-4 h-4" />
-                Locations
-              </Link>
-            </nav>
+            {token && (
+              <nav className="hidden sm:flex items-center gap-1 text-sm font-medium">
+                <Link
+                  to="/"
+                  className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Link>
+                <Link
+                  to="/categories"
+                  className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
+                >
+                  <FolderTree className="w-4 h-4" />
+                  Categories
+                </Link>
+                <Link
+                  to="/locations"
+                  className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
+                >
+                  <MapPin className="w-4 h-4" />
+                  Locations
+                </Link>
+              </nav>
+            )}
           </div>
 
           <div className="flex items-center gap-3">

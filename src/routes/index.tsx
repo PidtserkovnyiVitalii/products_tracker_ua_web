@@ -52,59 +52,61 @@ function DashboardPage() {
         </div>
       </div>
 
-      {/* Feature Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Link
-          to="/categories"
-          className="group p-6 bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between"
-        >
-          <div>
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-              <FolderTree className="w-6 h-6" />
+      {/* Feature Cards Grid (Shown for authenticated users) */}
+      {token && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Link
+            to="/categories"
+            className="group p-6 bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <FolderTree className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-lg flex items-center justify-between">
+                Categories
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+              </h3>
+              <p className="text-slate-500 text-sm mt-1.5">
+                Hierarchical product tree taxonomy with slug management and circular dependency protection.
+              </p>
             </div>
-            <h3 className="font-bold text-slate-900 text-lg flex items-center justify-between">
-              Categories
-              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
-            </h3>
-            <p className="text-slate-500 text-sm mt-1.5">
-              Hierarchical product tree taxonomy with slug management and circular dependency protection.
-            </p>
-          </div>
-          <div className="mt-6 text-xs font-semibold text-blue-600">Explore Tree &rarr;</div>
-        </Link>
+            <div className="mt-6 text-xs font-semibold text-blue-600">Explore Tree &rarr;</div>
+          </Link>
 
-        <Link
-          to="/locations"
-          className="group p-6 bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:shadow-md hover:border-emerald-400 transition-all flex flex-col justify-between"
-        >
-          <div>
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-              <MapPin className="w-6 h-6" />
+          <Link
+            to="/locations"
+            className="group p-6 bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:shadow-md hover:border-emerald-400 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-lg flex items-center justify-between">
+                Locations
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+              </h3>
+              <p className="text-slate-500 text-sm mt-1.5">
+                Warehouse points and retail locations registered across Ukraine.
+              </p>
             </div>
-            <h3 className="font-bold text-slate-900 text-lg flex items-center justify-between">
-              Locations
-              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
-            </h3>
-            <p className="text-slate-500 text-sm mt-1.5">
-              Warehouse points and retail locations registered across Ukraine.
-            </p>
-          </div>
-          <div className="mt-6 text-xs font-semibold text-emerald-600">View Locations &rarr;</div>
-        </Link>
+            <div className="mt-6 text-xs font-semibold text-emerald-600">View Locations &rarr;</div>
+          </Link>
 
-        <div className="p-6 bg-white border border-dashed border-slate-200 rounded-2xl shadow-xs opacity-75 flex flex-col justify-between">
-          <div>
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4">
-              <Package className="w-6 h-6" />
+          <div className="p-6 bg-white border border-dashed border-slate-200 rounded-2xl shadow-xs opacity-75 flex flex-col justify-between">
+            <div>
+              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4">
+                <Package className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-slate-700 text-lg">Products & Stock</h3>
+              <p className="text-slate-400 text-sm mt-1.5">
+                Coming next: product catalog linked to categories with location stock tracking.
+              </p>
             </div>
-            <h3 className="font-bold text-slate-700 text-lg">Products & Stock</h3>
-            <p className="text-slate-400 text-sm mt-1.5">
-              Coming next: product catalog linked to categories with location stock tracking.
-            </p>
+            <div className="mt-6 text-xs font-semibold text-purple-400">In Development</div>
           </div>
-          <div className="mt-6 text-xs font-semibold text-purple-400">In Development</div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

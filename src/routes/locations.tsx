@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/api'
 import { useAuthStore } from '../store/authStore'
-import { MapPin, ShieldAlert, Calendar } from 'lucide-react'
+import { MapPin, ShieldAlert, Warehouse, Store } from 'lucide-react'
 
 export const Route = createFileRoute('/locations')({
   component: LocationsPage,
@@ -10,8 +10,9 @@ export const Route = createFileRoute('/locations')({
 
 interface LocationRecord {
   id: string
+  name: string
   address: string
-  created_at: string
+  location_type?: string
 }
 
 function LocationsPage() {
@@ -68,25 +69,38 @@ function LocationsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {locations.map((loc) => (
-            <div
-              key={loc.id}
-              className="p-5 bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:border-slate-300 transition-all"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                  <MapPin className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">{loc.address}</h3>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-2 font-mono">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>Added {new Date(loc.created_at).toLocaleDateString()}</span>
+          {locations.map((loc) => {
+            const isWarehouse = loc.location_type === 'warehouse'
+            return (
+              <div
+                key={loc.id}
+                className="p-5 bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:border-slate-300 transition-all"
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`p-2.5 rounded-xl ${
+                      isWarehouse ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+                    }`}
+                  >
+                    {isWarehouse ? <Warehouse className="w-5 h-5" /> : <Store className="w-5 h-5" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="font-semibold text-slate-900">{loc.name || loc.address}</h3>
+                      {loc.location_type && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                          {loc.location_type}
+                        </span>
+                      )}
+                    </div>
+                    {loc.name && loc.address && (
+                      <p className="text-xs text-slate-500 mt-1">{loc.address}</p>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
