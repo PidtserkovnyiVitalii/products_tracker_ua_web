@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect, useRef, type FormEvent } from 'react'
 import axios from 'axios'
@@ -22,6 +22,9 @@ import {
 } from 'lucide-react'
 
 export const Route = createFileRoute('/products')({
+  validateSearch: (search: Record<string, unknown>): { location_id?: string } => ({
+    location_id: (search.location_id as string) || undefined,
+  }),
   component: ProductsPage,
 })
 
@@ -388,24 +391,37 @@ function ProductsPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
+  const { location_id: searchLocationId } = Route.useSearch()
+  const navigate = useNavigate({ from: '/products' })
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
+  const selectedLocation = searchLocationId || ''
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null)
   const [stockAdjustProduct, setStockAdjustProduct] = useState<ProductRecord | null>(null)
   const [modalError, setModalError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
+  const handleLocationChange = (locId: string) => {
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        location_id: locId || undefined,
+      }),
+    })
+  }
+
   const canManage = user?.role === 'admin' || user?.role === 'stockkeeper'
 
   // Fetch Products
   const { data: products = [], isLoading, error } = useQuery<ProductRecord[]>({
-    queryKey: ['products', searchQuery, selectedCategory],
+    queryKey: ['products', searchQuery, selectedCategory, selectedLocation],
     queryFn: async () => {
       const params: Record<string, string> = {}
       if (searchQuery.trim()) params.query = searchQuery.trim()
       if (selectedCategory) params.category_id = selectedCategory
+      if (selectedLocation) params.location_id = selectedLocation
       const res = await api.get('/api/v1/products', { params })
       return res.data
     },
@@ -566,8 +582,8 @@ function ProductsPage() {
         </div>
       )}
 
-      {/* Search & Category Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
+      {/* Search, Category & Location Filter Bar */}
+      <div className="flex flex-col md:flex-row items-center gap-3 mb-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -579,7 +595,7 @@ function ProductsPage() {
           />
         </div>
 
-        <div className="relative w-full sm:w-64">
+        <div className="relative w-full md:w-56">
           <FolderTree className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <select
             value={selectedCategory}
@@ -594,7 +610,41 @@ function ProductsPage() {
             ))}
           </select>
         </div>
+
+        <div className="relative w-full md:w-56">
+          <MapPin className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <select
+            value={selectedLocation}
+            onChange={(e) => handleLocationChange(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50 text-slate-700"
+          >
+            <option value="">All Locations</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {selectedLocation && (
+        <div className="flex items-center justify-between mb-4 px-4 py-2.5 bg-blue-50/80 border border-blue-200/80 rounded-xl text-xs text-blue-900">
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
+            <span>
+              Showing products stocked at <strong className="font-semibold">{locations.find((l) => l.id === selectedLocation)?.name || 'Selected Location'}</strong>
+            </span>
+          </div>
+          <button
+            onClick={() => handleLocationChange('')}
+            className="inline-flex items-center gap-1 font-semibold text-blue-700 hover:text-blue-900 px-2.5 py-1 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+            Clear Filter
+          </button>
+        </div>
+      )}
 
       {/* Products List */}
       {isLoading ? (
@@ -607,12 +657,19 @@ function ProductsPage() {
         <div className="text-center py-16 bg-white border border-dashed border-slate-300 rounded-2xl">
           <Package className="w-10 h-10 text-slate-300 mx-auto mb-2" />
           <h3 className="font-semibold text-slate-700">No products found</h3>
-          <p className="text-sm text-slate-500 mt-1">Try adjusting your search or category filter.</p>
+          <p className="text-sm text-slate-500 mt-1">
+            {selectedLocation
+              ? 'No products with inventory at this location. Try clearing the location filter.'
+              : 'Try adjusting your search or category filter.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
           {products.map((item) => {
             const hasStock = item.total_stock > 0
+            const locationStockItem = selectedLocation
+              ? item.stocks.find((st) => st.location_id === selectedLocation)
+              : null
             return (
               <div
                 key={item.id}
@@ -655,16 +712,25 @@ function ProductsPage() {
                       <div className="text-xs text-slate-400 italic">No stock recorded yet</div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
-                        {item.stocks.map((st) => (
-                          <div
-                            key={st.location_id}
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50/70 text-xs"
-                          >
-                            <MapPin className="w-3 h-3 text-slate-400" />
-                            <span className="text-slate-600 font-medium">{st.location_name}:</span>
-                            <span className="font-bold text-slate-800">{st.quantity}</span>
-                          </div>
-                        ))}
+                        {item.stocks.map((st) => {
+                          const isCurrentLocation = selectedLocation === st.location_id
+                          return (
+                            <div
+                              key={st.location_id}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs transition-all ${
+                                isCurrentLocation
+                                  ? 'border-blue-400 bg-blue-50/80 text-blue-900 font-semibold ring-1 ring-blue-300'
+                                  : 'border-slate-200 bg-slate-50/70 text-slate-700'
+                              }`}
+                            >
+                              <MapPin
+                                className={`w-3 h-3 ${isCurrentLocation ? 'text-blue-600' : 'text-slate-400'}`}
+                              />
+                              <span className="font-medium">{st.location_name}:</span>
+                              <span className="font-bold">{st.quantity}</span>
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
@@ -673,27 +739,45 @@ function ProductsPage() {
                 {/* Right Side: Total Stock Badge & Actions */}
                 <div className="flex md:flex-col items-end justify-between md:justify-start gap-4">
                   <div className="text-right">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                      Total Units
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span
-                        className={`text-2xl font-black ${
-                          hasStock ? 'text-slate-900' : 'text-red-500'
-                        }`}
-                      >
-                        {item.total_stock}
-                      </span>
-                      <span
-                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                          hasStock
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {hasStock ? 'In Stock' : 'Out of Stock'}
-                      </span>
-                    </div>
+                    {locationStockItem ? (
+                      <>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">
+                          Location Units
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 justify-end">
+                          <span className="text-2xl font-black text-blue-700">
+                            {locationStockItem.quantity}
+                          </span>
+                          <span className="text-xs text-slate-400 font-medium">
+                            (Total: {item.total_stock})
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                          Total Units
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span
+                            className={`text-2xl font-black ${
+                              hasStock ? 'text-slate-900' : 'text-red-500'
+                            }`}
+                          >
+                            {item.total_stock}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                              hasStock
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {hasStock ? 'In Stock' : 'Out of Stock'}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {canManage && (

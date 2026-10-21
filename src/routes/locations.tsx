@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, type FormEvent } from 'react'
 import axios from 'axios'
 import { api } from '../api/api'
 import { useAuthStore } from '../store/authStore'
-import { MapPin, ShieldAlert, Warehouse, Store, Plus, Edit3, X, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react'
+import { MapPin, ShieldAlert, Warehouse, Store, Plus, Edit3, X, AlertCircle, CheckCircle2, Trash2, Package, ArrowRight } from 'lucide-react'
 
 export const Route = createFileRoute('/locations')({
   component: LocationsPage,
@@ -377,28 +377,40 @@ function LocationsPage() {
                   </div>
                 </div>
 
-                {canManage && (
-                  <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-slate-100">
-                    <button
-                      onClick={() => handleOpenEdit(loc)}
-                      className="px-3 py-1 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm(`Are you sure you want to delete "${loc.name}"?`)) {
-                          deleteMutation.mutate(loc.id)
-                        }
-                      }}
-                      className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                      title="Delete location"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-100">
+                  <Link
+                    to="/products"
+                    search={{ location_id: loc.id }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Package className="w-3.5 h-3.5" />
+                    <span>View Products</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+
+                  {canManage && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEdit(loc)}
+                        className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete "${loc.name}"?`)) {
+                            deleteMutation.mutate(loc.id)
+                          }
+                        }}
+                        className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                        title="Delete location"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )
           })}
