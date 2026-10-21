@@ -1,7 +1,7 @@
 import { createRootRoute, Link, Outlet, useNavigate } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useAuthStore } from '../store/authStore'
-import { Package, FolderTree, MapPin, LogIn, LogOut, LayoutDashboard } from 'lucide-react'
+import { Package, FolderTree, MapPin, LogIn, LogOut, LayoutDashboard, Receipt } from 'lucide-react'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -60,6 +60,13 @@ function RootComponent() {
                 >
                   <MapPin className="w-4 h-4" />
                   Locations
+                </Link>
+                <Link
+                  to="/sales"
+                  className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
+                >
+                  <Receipt className="w-4 h-4" />
+                  Sales
                 </Link>
               </nav>
             )}
