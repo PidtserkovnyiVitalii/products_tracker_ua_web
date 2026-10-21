@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import JsBarcode from 'jsbarcode'
 import {
   X,
@@ -310,63 +311,71 @@ export function PriceStickerModal({
 
   return (
     <>
-      {/* Hidden Thermal Print Container */}
-      <div
-        id="sticker-print-container"
-        className="hidden print:block"
-        style={
-          {
-            '--sticker-width': `${activeWidth}mm`,
-            '--sticker-height': `${activeHeight}mm`,
-          } as React.CSSProperties
-        }
-      >
-        <style>
-          {`
-            @media print {
-              @page {
-                size: ${activeWidth}mm ${activeHeight}mm;
-                margin: 0;
+      {/* Hidden Thermal Print Container rendered directly into body via Portal */}
+      {createPortal(
+        <div
+          id="sticker-print-container"
+          className="hidden print:block"
+        >
+          <style>
+            {`
+              @media print {
+                @page {
+                  size: ${activeWidth}mm ${activeHeight}mm;
+                  margin: 0;
+                }
+                html, body {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  height: auto !important;
+                  min-height: 0 !important;
+                  background: #ffffff !important;
+                  overflow: visible !important;
+                }
+                #root {
+                  display: none !important;
+                }
+                #sticker-print-container {
+                  display: block !important;
+                  position: static !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  width: ${activeWidth}mm !important;
+                  background: #ffffff !important;
+                }
+                .sticker-label-page {
+                  box-sizing: border-box !important;
+                  width: ${activeWidth}mm !important;
+                  height: ${activeHeight}mm !important;
+                  max-height: ${activeHeight}mm !important;
+                  overflow: hidden !important;
+                  page-break-after: always !important;
+                  break-after: page !important;
+                  margin: 0 !important;
+                }
+                .sticker-label-page:last-child {
+                  page-break-after: avoid !important;
+                  break-after: avoid !important;
+                }
               }
-              body * {
-                visibility: hidden !important;
-              }
-              #sticker-print-container, #sticker-print-container * {
-                visibility: visible !important;
-              }
-              #sticker-print-container {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: ${activeWidth}mm !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: white !important;
-              }
-              .sticker-label-page {
-                page-break-after: always !important;
-                break-after: page !important;
-                box-sizing: border-box !important;
-                width: ${activeWidth}mm !important;
-                height: ${activeHeight}mm !important;
-              }
-            }
-          `}
-        </style>
+            `}
+          </style>
 
-        {items.map((prod) => {
-          const qty = quantities[prod.id] || 0
-          return Array.from({ length: qty }).map((_, idx) => (
-            <StickerCard
-              key={`${prod.id}-print-${idx}`}
-              product={prod}
-              widthMm={activeWidth}
-              heightMm={activeHeight}
-              isPrintMode
-            />
-          ))
-        })}
-      </div>
+          {items.map((prod) => {
+            const qty = quantities[prod.id] || 0
+            return Array.from({ length: qty }).map((_, idx) => (
+              <StickerCard
+                key={`${prod.id}-print-${idx}`}
+                product={prod}
+                widthMm={activeWidth}
+                heightMm={activeHeight}
+                isPrintMode
+              />
+            ))
+          })}
+        </div>,
+        document.body
+      )}
 
       {/* Screen Interactive Modal */}
       <div
