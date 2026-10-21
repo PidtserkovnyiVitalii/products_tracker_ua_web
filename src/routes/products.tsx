@@ -22,8 +22,9 @@ import {
 } from 'lucide-react'
 
 export const Route = createFileRoute('/products')({
-  validateSearch: (search: Record<string, unknown>): { location_id?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { location_id?: string; category_id?: string } => ({
     location_id: (search.location_id as string) || undefined,
+    category_id: (search.category_id as string) || undefined,
   }),
   component: ProductsPage,
 })
@@ -391,12 +392,12 @@ function ProductsPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
-  const { location_id: searchLocationId } = Route.useSearch()
+  const { location_id: searchLocationId, category_id: searchCategoryId } = Route.useSearch()
   const navigate = useNavigate({ from: '/products' })
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('')
   const selectedLocation = searchLocationId || ''
+  const selectedCategory = searchCategoryId || ''
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null)
   const [stockAdjustProduct, setStockAdjustProduct] = useState<ProductRecord | null>(null)
@@ -408,6 +409,15 @@ function ProductsPage() {
       search: (prev) => ({
         ...prev,
         location_id: locId || undefined,
+      }),
+    })
+  }
+
+  const handleCategoryChange = (catId: string) => {
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        category_id: catId || undefined,
       }),
     })
   }
@@ -599,7 +609,7 @@ function ProductsPage() {
           <FolderTree className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            onChange={(e) => handleCategoryChange(e.target.value)}
             className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50 text-slate-700"
           >
             <option value="">All Categories</option>
@@ -628,21 +638,56 @@ function ProductsPage() {
         </div>
       </div>
 
-      {selectedLocation && (
-        <div className="flex items-center justify-between mb-4 px-4 py-2.5 bg-blue-50/80 border border-blue-200/80 rounded-xl text-xs text-blue-900">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
-            <span>
-              Showing products stocked at <strong className="font-semibold">{locations.find((l) => l.id === selectedLocation)?.name || 'Selected Location'}</strong>
-            </span>
-          </div>
-          <button
-            onClick={() => handleLocationChange('')}
-            className="inline-flex items-center gap-1 font-semibold text-blue-700 hover:text-blue-900 px-2.5 py-1 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
-          >
-            <X className="w-3.5 h-3.5" />
-            Clear Filter
-          </button>
+      {(selectedCategory || selectedLocation) && (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {selectedCategory && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50/90 border border-blue-200 rounded-xl text-xs text-blue-900">
+              <FolderTree className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+              <span>
+                Category: <strong>{categories.find((c) => c.id === selectedCategory)?.name || 'Selected'}</strong>
+              </span>
+              <button
+                onClick={() => handleCategoryChange('')}
+                className="hover:text-blue-600 p-0.5 rounded hover:bg-blue-100 transition-colors cursor-pointer"
+                title="Clear category filter"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {selectedLocation && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50/90 border border-blue-200 rounded-xl text-xs text-blue-900">
+              <MapPin className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+              <span>
+                Location: <strong>{locations.find((l) => l.id === selectedLocation)?.name || 'Selected Location'}</strong>
+              </span>
+              <button
+                onClick={() => handleLocationChange('')}
+                className="hover:text-blue-600 p-0.5 rounded hover:bg-blue-100 transition-colors cursor-pointer"
+                title="Clear location filter"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {selectedCategory && selectedLocation && (
+            <button
+              onClick={() => {
+                navigate({
+                  search: (prev) => ({
+                    ...prev,
+                    category_id: undefined,
+                    location_id: undefined,
+                  }),
+                })
+              }}
+              className="text-xs text-slate-500 hover:text-slate-800 underline px-1 py-1 cursor-pointer"
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
       )}
 
@@ -658,9 +703,9 @@ function ProductsPage() {
           <Package className="w-10 h-10 text-slate-300 mx-auto mb-2" />
           <h3 className="font-semibold text-slate-700">No products found</h3>
           <p className="text-sm text-slate-500 mt-1">
-            {selectedLocation
-              ? 'No products with inventory at this location. Try clearing the location filter.'
-              : 'Try adjusting your search or category filter.'}
+            {selectedCategory || selectedLocation
+              ? 'No products match the active filters. Try clearing category or location filter.'
+              : 'Try adjusting your search query.'}
           </p>
         </div>
       ) : (
@@ -680,7 +725,13 @@ function ProductsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-lg font-bold text-slate-900">{item.name}</h3>
                     {item.category && (
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium">
+                      <span
+                        className={`text-xs px-2.5 py-0.5 rounded-full font-medium transition-all ${
+                          selectedCategory === item.category.id
+                            ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                            : 'bg-blue-50 text-blue-700'
+                        }`}
+                      >
                         {item.category.name}
                       </span>
                     )}

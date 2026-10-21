@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, type FormEvent } from 'react'
 import axios from 'axios'
 import { api } from '../api/api'
 import { useAuthStore } from '../store/authStore'
-import { FolderTree, Plus, ChevronRight, ChevronDown, Trash2, AlertCircle, ShieldAlert, CheckCircle2, X, Edit3 } from 'lucide-react'
+import { FolderTree, Plus, ChevronRight, ChevronDown, Trash2, AlertCircle, ShieldAlert, CheckCircle2, X, Edit3, Package } from 'lucide-react'
 
 export const Route = createFileRoute('/categories')({
   component: CategoriesPage,
@@ -67,31 +67,43 @@ function CategoryItem({
           </div>
         </div>
 
-        {canManage && (
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => onEdit(node)}
-              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-              title="Edit name and slug"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => onAddChild(node)}
-              className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add Subcategory
-            </button>
-            <button
-              onClick={() => onDelete(node.id)}
-              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-              title="Delete category"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5">
+          <Link
+            to="/products"
+            search={{ category_id: node.id }}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+            title="View products in this category"
+          >
+            <Package className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">View Products</span>
+          </Link>
+
+          {canManage && (
+            <>
+              <button
+                onClick={() => onEdit(node)}
+                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                title="Edit name and slug"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onAddChild(node)}
+                className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Add Subcategory</span>
+              </button>
+              <button
+                onClick={() => onDelete(node.id)}
+                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                title="Delete category"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {hasChildren && isOpen && (
