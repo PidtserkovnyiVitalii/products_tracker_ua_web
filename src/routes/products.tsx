@@ -609,29 +609,19 @@ function ProductsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Link
-            to="/scan"
-            className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-medium rounded-xl transition-colors cursor-pointer"
+        {canManage && (
+          <button
+            onClick={() => {
+              setEditingProduct(null)
+              setModalError(null)
+              setIsProductModalOpen(true)
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
           >
-            <ScanBarcode className="w-4 h-4 text-blue-600" />
-            <span>Mobile Scanner</span>
-          </Link>
-
-          {canManage && (
-            <button
-              onClick={() => {
-                setEditingProduct(null)
-                setModalError(null)
-                setIsProductModalOpen(true)
-              }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              New Product
-            </button>
-          )}
-        </div>
+            <Plus className="w-4 h-4" />
+            New Product
+          </button>
+        )}
       </div>
 
       {successMsg && (

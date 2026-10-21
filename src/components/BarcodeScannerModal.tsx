@@ -10,6 +10,7 @@ import {
   Upload,
   ScanBarcode,
   Keyboard,
+  AlertCircle,
 } from 'lucide-react'
 
 interface BarcodeScannerModalProps {
@@ -56,7 +57,9 @@ export function BarcodeScannerModal({
   title = 'Scan Barcode',
 }: BarcodeScannerModalProps) {
   const [cameraError, setCameraError] = useState<string | null>(null)
+  const [scanError, setScanError] = useState<string | null>(null)
   const [isStarting, setIsStarting] = useState(true)
+  const [isAnalyzingFile, setIsAnalyzingFile] = useState(false)
   const [torchAvailable, setTorchAvailable] = useState(false)
   const [torchOn, setTorchOn] = useState(false)
   const [cameras, setCameras] = useState<Array<{ id: string; label: string }>>([])
@@ -191,15 +194,21 @@ export function BarcodeScannerModal({
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !scannerRef.current) return
+    setIsAnalyzingFile(true)
+    setScanError(null)
     try {
-      setCameraError(null)
       const decoded = await scannerRef.current.scanFile(file, true)
       playScanBeep()
       triggerHaptic()
       onScan(decoded.trim())
       onClose()
     } catch {
-      setCameraError('Could not detect any barcode in the selected photo. Please ensure barcode is clear and well-lit.')
+      setScanError('Could not detect any barcode in the uploaded image. Please ensure the barcode is sharp, well-lit, and not cropped.')
+    } finally {
+      setIsAnalyzingFile(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -242,8 +251,34 @@ export function BarcodeScannerModal({
           </button>
         </div>
 
+        {/* Scan / Decode Error Alert */}
+        {scanError && (
+          <div className="mx-4 mt-3 p-3 bg-red-950/90 border border-red-500/60 rounded-2xl flex items-start gap-2.5 text-xs text-red-200 shadow-md">
+            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <span className="font-semibold text-red-300 block">Barcode Detection Failed</span>
+              <span className="text-[11px] text-red-300/90">{scanError}</span>
+            </div>
+            <button
+              onClick={() => setScanError(null)}
+              className="text-red-400 hover:text-white p-0.5 rounded cursor-pointer transition-colors"
+              title="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Viewfinder Container */}
         <div className="relative bg-black flex-1 min-h-[300px] flex items-center justify-center overflow-hidden">
+          {/* File Processing Spinner */}
+          {isAnalyzingFile && (
+            <div className="absolute inset-0 z-20 bg-slate-950/90 flex flex-col items-center justify-center gap-3">
+              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm font-medium text-slate-200">Analyzing image for barcode...</p>
+            </div>
+          )}
+
           {/* HTML5 QR Code Mount Node */}
           <div id={scannerContainerId} className="w-full h-full min-h-[300px]" />
 
@@ -285,11 +320,12 @@ export function BarcodeScannerModal({
               <div className="flex flex-col gap-2.5 w-full max-w-xs">
                 <button
                   type="button"
+                  disabled={isAnalyzingFile}
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
+                  className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
                 >
                   <Upload className="w-4 h-4" />
-                  Upload Photo with Barcode
+                  <span>{isAnalyzingFile ? 'Analyzing Photo...' : 'Upload Photo with Barcode'}</span>
                 </button>
                 <button
                   type="button"
