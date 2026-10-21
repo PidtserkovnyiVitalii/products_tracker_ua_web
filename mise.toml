@@ -1,2 +1,22 @@
 [tools]
-node = "22"
+node = "22.14.0"
+
+[tasks.setup]
+description = "Install npm dependencies"
+run = "npm install"
+
+[tasks.dev]
+description = "Start the Vite frontend development server"
+run = "npm run dev"
+
+[tasks.build]
+description = "Typecheck and build for production"
+run = "npm run build"
+
+[tasks.lint]
+description = "Run ESLint code quality checks"
+run = "npm run lint"
+
+[tasks.preview]
+description = "Preview the production build locally"
+run = "npm run preview"
