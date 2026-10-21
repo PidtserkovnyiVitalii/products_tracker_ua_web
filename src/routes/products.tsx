@@ -19,12 +19,15 @@ import {
   SlidersHorizontal,
   Layers,
   Barcode,
+  ScanBarcode,
 } from 'lucide-react'
+import { BarcodeScannerModal } from '../components/BarcodeScannerModal'
 
 export const Route = createFileRoute('/products')({
-  validateSearch: (search: Record<string, unknown>): { location_id?: string; category_id?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { location_id?: string; category_id?: string; query?: string } => ({
     location_id: (search.location_id as string) || undefined,
     category_id: (search.category_id as string) || undefined,
+    query: (search.query as string) || undefined,
   }),
   component: ProductsPage,
 })
@@ -89,6 +92,7 @@ function ProductModal({
   const [barcode, setBarcode] = useState(product?.barcode || '')
   const [description, setDescription] = useState(product?.description || '')
   const [categoryId, setCategoryId] = useState(product?.category_id || '')
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -178,16 +182,36 @@ function ProductModal({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                Barcode (EAN/UPC)
-              </label>
-              <input
-                type="text"
-                value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
-                placeholder="e.g. 5702017161914"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Barcode (EAN/UPC)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsScannerOpen(true)}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <ScanBarcode className="w-3.5 h-3.5" />
+                  <span>Scan</span>
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={barcode}
+                  onChange={(e) => setBarcode(e.target.value)}
+                  placeholder="e.g. 5702017161914"
+                  className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsScannerOpen(true)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                  title="Scan barcode with camera"
+                >
+                  <ScanBarcode className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -240,6 +264,13 @@ function ProductModal({
             </button>
           </div>
         </form>
+
+        <BarcodeScannerModal
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onScan={(scanned) => setBarcode(scanned)}
+          title="Scan Product Barcode"
+        />
       </div>
     </div>
   )
@@ -392,12 +423,20 @@ function ProductsPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
-  const { location_id: searchLocationId, category_id: searchCategoryId } = Route.useSearch()
+  const { location_id: searchLocationId, category_id: searchCategoryId, query: searchParamQuery } = Route.useSearch()
   const navigate = useNavigate({ from: '/products' })
 
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(searchParamQuery || '')
+  const [prevSearchParam, setPrevSearchParam] = useState(searchParamQuery)
+
+  if (searchParamQuery !== prevSearchParam) {
+    setPrevSearchParam(searchParamQuery)
+    setSearchQuery(searchParamQuery || '')
+  }
+
   const selectedLocation = searchLocationId || ''
   const selectedCategory = searchCategoryId || ''
+  const [isSearchScannerOpen, setIsSearchScannerOpen] = useState(false)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null)
   const [stockAdjustProduct, setStockAdjustProduct] = useState<ProductRecord | null>(null)
@@ -570,19 +609,29 @@ function ProductsPage() {
           </div>
         </div>
 
-        {canManage && (
-          <button
-            onClick={() => {
-              setEditingProduct(null)
-              setModalError(null)
-              setIsProductModalOpen(true)
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
+        <div className="flex items-center gap-2">
+          <Link
+            to="/scan"
+            className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-medium rounded-xl transition-colors cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            New Product
-          </button>
-        )}
+            <ScanBarcode className="w-4 h-4 text-blue-600" />
+            <span>Mobile Scanner</span>
+          </Link>
+
+          {canManage && (
+            <button
+              onClick={() => {
+                setEditingProduct(null)
+                setModalError(null)
+                setIsProductModalOpen(true)
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              New Product
+            </button>
+          )}
+        </div>
       </div>
 
       {successMsg && (
@@ -594,15 +643,26 @@ function ProductsPage() {
 
       {/* Search, Category & Location Filter Bar */}
       <div className="flex flex-col md:flex-row items-center gap-3 mb-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, SKU, or barcode..."
-            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
-          />
+        <div className="relative flex-1 w-full flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name, SKU, or barcode..."
+              className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsSearchScannerOpen(true)}
+            className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-blue-200/80 transition-colors cursor-pointer flex-shrink-0"
+            title="Scan barcode with camera"
+          >
+            <ScanBarcode className="w-4 h-4" />
+            <span className="hidden sm:inline">Scan Barcode</span>
+          </button>
         </div>
 
         <div className="relative w-full md:w-56">
@@ -901,6 +961,22 @@ function ProductsPage() {
           errorMsg={modalError}
         />
       )}
+
+      {/* Barcode Scanner Modal for Search */}
+      <BarcodeScannerModal
+        isOpen={isSearchScannerOpen}
+        onClose={() => setIsSearchScannerOpen(false)}
+        onScan={(scanned) => {
+          setSearchQuery(scanned)
+          navigate({
+            search: (prev) => ({
+              ...prev,
+              query: scanned,
+            }),
+          })
+        }}
+        title="Scan Barcode to Search"
+      />
     </div>
   )
 }
