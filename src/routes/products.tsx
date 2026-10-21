@@ -20,8 +20,11 @@ import {
   Layers,
   Barcode,
   ScanBarcode,
+  Printer,
+  CheckSquare,
 } from 'lucide-react'
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal'
+import { PriceStickerModal } from '../components/PriceStickerModal'
 
 export const Route = createFileRoute('/products')({
   validateSearch: (search: Record<string, unknown>): { location_id?: string; category_id?: string; query?: string } => ({
@@ -44,6 +47,7 @@ interface ProductRecord {
   name: string
   sku: string
   barcode?: string
+  price: number
   description?: string
   category_id?: string
   category?: {
@@ -80,6 +84,7 @@ function ProductModal({
   onSubmit: (data: {
     name: string
     sku: string
+    price: number
     barcode?: string
     description?: string
     category_id?: string
@@ -89,6 +94,7 @@ function ProductModal({
 }) {
   const [name, setName] = useState(product?.name || '')
   const [sku, setSku] = useState(product?.sku || '')
+  const [price, setPrice] = useState(product?.price != null ? String(product.price) : '0.00')
   const [barcode, setBarcode] = useState(product?.barcode || '')
   const [description, setDescription] = useState(product?.description || '')
   const [categoryId, setCategoryId] = useState(product?.category_id || '')
@@ -113,6 +119,7 @@ function ProductModal({
     onSubmit({
       name: name.trim(),
       sku: sku.trim(),
+      price: Math.max(0, parseFloat(price) || 0),
       barcode: barcode.trim() || undefined,
       description: description.trim() || undefined,
       category_id: categoryId || undefined,
@@ -182,36 +189,51 @@ function ProductModal({
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  Barcode (EAN/UPC)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setIsScannerOpen(true)}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <ScanBarcode className="w-3.5 h-3.5" />
-                  <span>Scan</span>
-                </button>
-              </div>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder="e.g. 5702017161914"
-                  className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsScannerOpen(true)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                  title="Scan barcode with camera"
-                >
-                  <ScanBarcode className="w-4 h-4" />
-                </button>
-              </div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Retail Price (₴) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0.00"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                Barcode (EAN/UPC)
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsScannerOpen(true)}
+                className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer"
+              >
+                <ScanBarcode className="w-3.5 h-3.5" />
+                <span>Scan</span>
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
+                placeholder="e.g. 5702017161914"
+                className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
+              />
+              <button
+                type="button"
+                onClick={() => setIsScannerOpen(true)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Scan barcode with camera"
+              >
+                <ScanBarcode className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
@@ -443,6 +465,30 @@ function ProductsPage() {
   const [modalError, setModalError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
+  // Selection & Price Sticker Printing state
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set())
+  const [stickerModalProducts, setStickerModalProducts] = useState<ProductRecord[] | null>(null)
+
+  const toggleSelectProduct = (id: string) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const toggleSelectAll = (allIds: string[]) => {
+    if (selectedProductIds.size === allIds.length && allIds.length > 0) {
+      setSelectedProductIds(new Set())
+    } else {
+      setSelectedProductIds(new Set(allIds))
+    }
+  }
+
   const handleLocationChange = (locId: string) => {
     navigate({
       search: (prev) => ({
@@ -501,6 +547,7 @@ function ProductsPage() {
     mutationFn: async (data: {
       name: string
       sku: string
+      price: number
       barcode?: string
       description?: string
       category_id?: string
@@ -742,6 +789,21 @@ function ProductsPage() {
       )}
 
       {/* Products List */}
+      {!isLoading && !error && products.length > 0 && (
+        <div className="flex items-center justify-between px-1 mb-3 text-xs text-slate-500">
+          <label className="flex items-center gap-2 cursor-pointer hover:text-slate-800 select-none font-medium">
+            <input
+              type="checkbox"
+              checked={selectedProductIds.size === products.length && products.length > 0}
+              onChange={() => toggleSelectAll(products.map((p) => p.id))}
+              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+            />
+            <span>Select all ({products.length})</span>
+          </label>
+          <span>Showing {products.length} products</span>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="text-center py-12 text-slate-400">Loading catalog...</div>
       ) : error ? (
@@ -762,162 +824,203 @@ function ProductsPage() {
         <div className="space-y-4">
           {products.map((item) => {
             const hasStock = item.total_stock > 0
+            const isSelected = selectedProductIds.has(item.id)
             const locationStockItem = selectedLocation
               ? item.stocks.find((st) => st.location_id === selectedLocation)
               : null
             return (
               <div
                 key={item.id}
-                className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:border-slate-300 transition-all flex flex-col md:flex-row md:items-start justify-between gap-6"
+                className={`bg-white border rounded-2xl p-5 shadow-xs transition-all flex flex-col md:flex-row md:items-start justify-between gap-6 ${
+                  isSelected ? 'border-blue-500 ring-2 ring-blue-100 bg-blue-50/20' : 'border-slate-200/80 hover:border-slate-300'
+                }`}
               >
-                {/* Product Info */}
-                <div className="flex-1 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-lg font-bold text-slate-900">{item.name}</h3>
-                    {item.category && (
-                      <span
-                        className={`text-xs px-2.5 py-0.5 rounded-full font-medium transition-all ${
-                          selectedCategory === item.category.id
-                            ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                            : 'bg-blue-50 text-blue-700'
-                        }`}
-                      >
-                        {item.category.name}
-                      </span>
-                    )}
+                {/* Checkbox & Product Info */}
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="pt-1">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelectProduct(item.id)}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                    />
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-slate-500">
-                    <span className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-md">
-                      <Layers className="w-3.5 h-3.5 text-slate-400" />
-                      SKU: {item.sku}
-                    </span>
-                    {item.barcode && (
-                      <span className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-md">
-                        <Barcode className="w-3.5 h-3.5 text-slate-400" />
-                        {item.barcode}
-                      </span>
-                    )}
-                  </div>
-
-                  {item.description && (
-                    <p className="text-xs text-slate-600 line-clamp-2 mt-1">{item.description}</p>
-                  )}
-
-                  {/* Stock Breakdown per Location */}
-                  <div className="pt-3 border-t border-slate-100">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                      Stock per Location:
+                  <div className="flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-bold text-slate-900">{item.name}</h3>
+                      {item.category && (
+                        <span
+                          className={`text-xs px-2.5 py-0.5 rounded-full font-medium transition-all ${
+                            selectedCategory === item.category.id
+                              ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                              : 'bg-blue-50 text-blue-700'
+                          }`}
+                        >
+                          {item.category.name}
+                        </span>
+                      )}
                     </div>
-                    {item.stocks.length === 0 ? (
-                      <div className="text-xs text-slate-400 italic">No stock recorded yet</div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {item.stocks.map((st) => {
-                          const isCurrentLocation = selectedLocation === st.location_id
-                          return (
-                            <div
-                              key={st.location_id}
-                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs transition-all ${
-                                isCurrentLocation
-                                  ? 'border-blue-400 bg-blue-50/80 text-blue-900 font-semibold ring-1 ring-blue-300'
-                                  : 'border-slate-200 bg-slate-50/70 text-slate-700'
-                              }`}
-                            >
-                              <MapPin
-                                className={`w-3 h-3 ${isCurrentLocation ? 'text-blue-600' : 'text-slate-400'}`}
-                              />
-                              <span className="font-medium">{st.location_name}:</span>
-                              <span className="font-bold">{st.quantity}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-slate-500">
+                      <span className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-md">
+                        <Layers className="w-3.5 h-3.5 text-slate-400" />
+                        SKU: {item.sku}
+                      </span>
+                      {item.barcode && (
+                        <span className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-md">
+                          <Barcode className="w-3.5 h-3.5 text-slate-400" />
+                          {item.barcode}
+                        </span>
+                      )}
+                    </div>
+
+                    {item.description && (
+                      <p className="text-xs text-slate-600 line-clamp-2 mt-1">{item.description}</p>
                     )}
+
+                    {/* Stock Breakdown per Location */}
+                    <div className="pt-3 border-t border-slate-100">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                        Stock per Location:
+                      </div>
+                      {item.stocks.length === 0 ? (
+                        <div className="text-xs text-slate-400 italic">No stock recorded yet</div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {item.stocks.map((st) => {
+                            const isCurrentLocation = selectedLocation === st.location_id
+                            return (
+                              <div
+                                key={st.location_id}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs transition-all ${
+                                  isCurrentLocation
+                                    ? 'border-blue-400 bg-blue-50/80 text-blue-900 font-semibold ring-1 ring-blue-300'
+                                    : 'border-slate-200 bg-slate-50/70 text-slate-700'
+                                }`}
+                              >
+                                <MapPin
+                                  className={`w-3 h-3 ${isCurrentLocation ? 'text-blue-600' : 'text-slate-400'}`}
+                                />
+                                <span className="font-medium">{st.location_name}:</span>
+                                <span className="font-bold">{st.quantity}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Right Side: Total Stock Badge & Actions */}
+                {/* Right Side: Price, Units & Actions */}
                 <div className="flex md:flex-col items-end justify-between md:justify-start gap-4">
-                  <div className="text-right">
-                    {locationStockItem ? (
+                  {/* Price & Stock info */}
+                  <div className="flex items-end gap-6 md:flex-col md:items-end md:gap-2">
+                    <div className="text-right">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                        Price
+                      </div>
+                      <div className="text-xl font-black text-slate-950 mt-0.5">
+                        {Number(item.price || 0).toLocaleString('uk-UA', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}{' '}
+                        ₴
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      {locationStockItem ? (
+                        <>
+                          <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">
+                            Location Units
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 justify-end">
+                            <span className="text-2xl font-black text-blue-700">
+                              {locationStockItem.quantity}
+                            </span>
+                            <span className="text-xs text-slate-400 font-medium">
+                              (Total: {item.total_stock})
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                            Total Units
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span
+                              className={`text-2xl font-black ${
+                                hasStock ? 'text-slate-900' : 'text-red-500'
+                              }`}
+                            >
+                              {item.total_stock}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                                hasStock
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {hasStock ? 'In Stock' : 'Out of Stock'}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setStickerModalProducts([item])}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer"
+                      title="Print Price Sticker"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
+
+                    {canManage && (
                       <>
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">
-                          Location Units
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5 justify-end">
-                          <span className="text-2xl font-black text-blue-700">
-                            {locationStockItem.quantity}
-                          </span>
-                          <span className="text-xs text-slate-400 font-medium">
-                            (Total: {item.total_stock})
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                          Total Units
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span
-                            className={`text-2xl font-black ${
-                              hasStock ? 'text-slate-900' : 'text-red-500'
-                            }`}
-                          >
-                            {item.total_stock}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                              hasStock
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            {hasStock ? 'In Stock' : 'Out of Stock'}
-                          </span>
-                        </div>
+                        <button
+                          onClick={() => {
+                            setStockAdjustProduct(item)
+                            setModalError(null)
+                          }}
+                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Adjust inventory"
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                          Stock
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingProduct(item)
+                            setModalError(null)
+                            setIsProductModalOpen(true)
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer"
+                          title="Edit product"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Archive product "${item.name}"?`)) {
+                              deleteMutation.mutate(item.id)
+                            }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                          title="Archive product"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </>
                     )}
                   </div>
-
-                  {canManage && (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => {
-                          setStockAdjustProduct(item)
-                          setModalError(null)
-                        }}
-                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
-                        title="Adjust inventory"
-                      >
-                        <SlidersHorizontal className="w-3.5 h-3.5" />
-                        Stock
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingProduct(item)
-                          setModalError(null)
-                          setIsProductModalOpen(true)
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer"
-                        title="Edit product"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Archive product "${item.name}"?`)) {
-                            deleteMutation.mutate(item.id)
-                          }
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                        title="Archive product"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             )
@@ -967,6 +1070,50 @@ function ProductsPage() {
         }}
         title="Scan Barcode to Search"
       />
+
+      {/* Floating Batch Actions Bar */}
+      {selectedProductIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 border border-slate-800 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-semibold">
+              {selectedProductIds.size} {selectedProductIds.size === 1 ? 'product' : 'products'} selected
+            </span>
+          </div>
+
+          <div className="h-4 w-px bg-slate-700" />
+
+          <button
+            onClick={() => {
+              const selected = products.filter((p) => selectedProductIds.has(p.id))
+              setStickerModalProducts(selected)
+            }}
+            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-blue-500/20"
+          >
+            <Printer className="w-4 h-4" />
+            Print Stickers ({selectedProductIds.size})
+          </button>
+
+          <button
+            onClick={() => setSelectedProductIds(new Set())}
+            className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+          >
+            Deselect all
+          </button>
+        </div>
+      )}
+
+      {/* Price Sticker Printing Modal */}
+      {stickerModalProducts && (
+        <PriceStickerModal
+          isOpen={!!stickerModalProducts}
+          onClose={() => setStickerModalProducts(null)}
+          products={stickerModalProducts}
+          onProductUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ['products'] })
+          }}
+        />
+      )}
     </div>
   )
 }
