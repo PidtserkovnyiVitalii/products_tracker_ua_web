@@ -18,6 +18,7 @@ interface BarcodeScannerModalProps {
   onClose: () => void
   onScan: (barcode: string) => void
   title?: string
+  continuous?: boolean
 }
 
 function playScanBeep() {
@@ -55,6 +56,7 @@ export function BarcodeScannerModal({
   onClose,
   onScan,
   title = 'Scan Barcode',
+  continuous = false,
 }: BarcodeScannerModalProps) {
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
@@ -66,7 +68,9 @@ export function BarcodeScannerModal({
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0)
   const [manualInput, setManualInput] = useState('')
   const [showManual, setShowManual] = useState(false)
+  const [continuousCount, setContinuousCount] = useState(0)
 
+  const lastScannedRef = useRef<{ code: string; time: number } | null>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scannerContainerId = 'barcode-scanner-viewfinder'
@@ -115,10 +119,25 @@ export function BarcodeScannerModal({
             aspectRatio: 1.0,
           },
           (decodedText) => {
+            const trimmed = decodedText.trim()
+            const now = Date.now()
+            if (
+              continuous &&
+              lastScannedRef.current &&
+              lastScannedRef.current.code === trimmed &&
+              now - lastScannedRef.current.time < 1500
+            ) {
+              return
+            }
+            lastScannedRef.current = { code: trimmed, time: now }
             playScanBeep()
             triggerHaptic()
-            onScan(decodedText.trim())
-            onClose()
+            onScan(trimmed)
+            if (continuous) {
+              setContinuousCount((prev) => prev + 1)
+            } else {
+              onClose()
+            }
           },
           () => {
             // Frame scanned without barcode, no-op
@@ -170,7 +189,7 @@ export function BarcodeScannerModal({
         }
       }
     }
-  }, [isOpen, currentCameraIndex, onClose, onScan])
+  }, [isOpen, currentCameraIndex, onClose, onScan, continuous])
 
   const toggleTorch = async () => {
     if (!scannerRef.current || !torchAvailable) return
@@ -243,12 +262,23 @@ export function BarcodeScannerModal({
               <p className="text-xs text-slate-400">Point phone camera at product barcode</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {continuous && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs transition-colors"
+              >
+                Done {continuousCount > 0 ? `(${continuousCount})` : ''}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Scan / Decode Error Alert */}
