@@ -1,7 +1,8 @@
 import { createRootRoute, Link, Outlet, useNavigate } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useAuthStore } from '../store/authStore'
-import { Package, FolderTree, MapPin, LogIn, LogOut, LayoutDashboard, Receipt } from 'lucide-react'
+import { useCartStore } from '../store/cartStore'
+import { Package, LogIn, LogOut, LayoutDashboard, Receipt, Settings2, ShoppingCart } from 'lucide-react'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -11,7 +12,11 @@ function RootComponent() {
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
   const logout = useAuthStore((state) => state.logout)
+  const cartItems = useCartStore((state) => state.items)
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
   const navigate = useNavigate()
+
+  const isCashier = user?.role === 'cashier'
 
   const handleLogout = () => {
     logout()
@@ -33,13 +38,15 @@ function RootComponent() {
 
             {token && (
               <nav className="hidden sm:flex items-center gap-1 text-sm font-medium">
-                <Link
-                  to="/"
-                  className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  Dashboard
-                </Link>
+                {!isCashier && (
+                  <Link
+                    to="/"
+                    className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    Dashboard
+                  </Link>
+                )}
                 <Link
                   to="/products"
                   className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
@@ -48,26 +55,21 @@ function RootComponent() {
                   Products
                 </Link>
                 <Link
-                  to="/categories"
-                  className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
-                >
-                  <FolderTree className="w-4 h-4" />
-                  Categories
-                </Link>
-                <Link
-                  to="/locations"
-                  className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
-                >
-                  <MapPin className="w-4 h-4" />
-                  Locations
-                </Link>
-                <Link
                   to="/sales"
                   className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
                 >
                   <Receipt className="w-4 h-4" />
                   Sales
                 </Link>
+                {!isCashier && (
+                  <Link
+                    to="/management"
+                    className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
+                  >
+                    <Settings2 className="w-4 h-4" />
+                    Management
+                  </Link>
+                )}
               </nav>
             )}
           </div>
@@ -75,6 +77,19 @@ function RootComponent() {
           <div className="flex items-center gap-3">
             {token ? (
               <div className="flex items-center gap-3">
+                {cartCount > 0 && (
+                  <Link
+                    to="/sales"
+                    search={{ openCheckout: true }}
+                    className="relative p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer"
+                    title={`Sales Cart (${cartCount} items)`}
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    <span className="absolute -top-1 -right-1 bg-blue-600 text-white rounded-full text-[10px] font-bold w-4 h-4 flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  </Link>
+                )}
                 <div className="hidden md:flex flex-col text-right">
                   <span className="text-xs font-semibold text-slate-900">{user?.email}</span>
                   <span className="text-[10px] uppercase font-bold text-blue-600">{user?.role}</span>

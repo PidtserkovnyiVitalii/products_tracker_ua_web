@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, useEffect, useRef, type FormEvent } from 'react'
+import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react'
 import axios from 'axios'
 import { api } from '../api/api'
 import { useAuthStore } from '../store/authStore'
@@ -22,14 +22,28 @@ import {
   ScanBarcode,
   Printer,
   CheckSquare,
+  ChevronDown,
+  ShoppingCart,
+  ArrowRight,
 } from 'lucide-react'
+import { useCartStore } from '../store/cartStore'
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal'
 import { PriceStickerModal } from '../components/PriceStickerModal'
 
 export const Route = createFileRoute('/products')({
-  validateSearch: (search: Record<string, unknown>): { location_id?: string; category_id?: string; query?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>
+  ): {
+    location_id?: string
+    location_ids?: string
+    category_id?: string
+    category_ids?: string
+    query?: string
+  } => ({
     location_id: (search.location_id as string) || undefined,
+    location_ids: (search.location_ids as string) || undefined,
     category_id: (search.category_id as string) || undefined,
+    category_ids: (search.category_ids as string) || undefined,
     query: (search.query as string) || undefined,
   }),
   component: ProductsPage,
@@ -445,7 +459,13 @@ function ProductsPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
-  const { location_id: searchLocationId, category_id: searchCategoryId, query: searchParamQuery } = Route.useSearch()
+  const {
+    location_id: searchLocationId,
+    location_ids: searchLocationIds,
+    category_id: searchCategoryId,
+    category_ids: searchCategoryIds,
+    query: searchParamQuery,
+  } = Route.useSearch()
   const navigate = useNavigate({ from: '/products' })
 
   const [searchQuery, setSearchQuery] = useState(searchParamQuery || '')
@@ -456,8 +476,78 @@ function ProductsPage() {
     setSearchQuery(searchParamQuery || '')
   }
 
-  const selectedLocation = searchLocationId || ''
-  const selectedCategory = searchCategoryId || ''
+  const selectedCategoryIds: string[] = useMemo(() => {
+    if (searchCategoryIds) return (searchCategoryIds as string).split(',').filter(Boolean)
+    if (searchCategoryId) return [searchCategoryId as string]
+    return []
+  }, [searchCategoryIds, searchCategoryId])
+
+  const selectedLocationIds: string[] = useMemo(() => {
+    if (searchLocationIds) return (searchLocationIds as string).split(',').filter(Boolean)
+    if (searchLocationId) return [searchLocationId as string]
+    return []
+  }, [searchLocationIds, searchLocationId])
+
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false)
+  const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false)
+
+  const categoryMenuRef = useRef<HTMLDivElement>(null)
+  const locationMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (categoryMenuRef.current && !categoryMenuRef.current.contains(e.target as Node)) {
+        setIsCategoryMenuOpen(false)
+      }
+      if (locationMenuRef.current && !locationMenuRef.current.contains(e.target as Node)) {
+        setIsLocationMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const toggleCategory = (catId: string) => {
+    const next = selectedCategoryIds.includes(catId)
+      ? selectedCategoryIds.filter((id) => id !== catId)
+      : [...selectedCategoryIds, catId]
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        category_ids: next.length > 0 ? next.join(',') : undefined,
+        category_id: undefined,
+      }),
+    })
+  }
+
+  const toggleLocation = (locId: string) => {
+    const next = selectedLocationIds.includes(locId)
+      ? selectedLocationIds.filter((id) => id !== locId)
+      : [...selectedLocationIds, locId]
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        location_ids: next.length > 0 ? next.join(',') : undefined,
+        location_id: undefined,
+      }),
+    })
+  }
+
+  const clearAllFilters = () => {
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        category_id: undefined,
+        category_ids: undefined,
+        location_id: undefined,
+        location_ids: undefined,
+      }),
+    })
+  }
+
+  const cartItems = useCartStore((state) => state.items)
+  const addToCart = useCartStore((state) => state.addItem)
+
   const [isSearchScannerOpen, setIsSearchScannerOpen] = useState(false)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null)
@@ -489,34 +579,16 @@ function ProductsPage() {
     }
   }
 
-  const handleLocationChange = (locId: string) => {
-    navigate({
-      search: (prev) => ({
-        ...prev,
-        location_id: locId || undefined,
-      }),
-    })
-  }
-
-  const handleCategoryChange = (catId: string) => {
-    navigate({
-      search: (prev) => ({
-        ...prev,
-        category_id: catId || undefined,
-      }),
-    })
-  }
-
   const canManage = user?.role === 'admin' || user?.role === 'stockkeeper'
 
   // Fetch Products
   const { data: products = [], isLoading, error } = useQuery<ProductRecord[]>({
-    queryKey: ['products', searchQuery, selectedCategory, selectedLocation],
+    queryKey: ['products', searchQuery, selectedCategoryIds, selectedLocationIds],
     queryFn: async () => {
       const params: Record<string, string> = {}
       if (searchQuery.trim()) params.query = searchQuery.trim()
-      if (selectedCategory) params.category_id = selectedCategory
-      if (selectedLocation) params.location_id = selectedLocation
+      if (selectedCategoryIds.length > 0) params.category_ids = selectedCategoryIds.join(',')
+      if (selectedLocationIds.length > 0) params.location_ids = selectedLocationIds.join(',')
       const res = await api.get('/api/v1/products', { params })
       return res.data
     },
@@ -702,104 +774,206 @@ function ProductsPage() {
           </button>
         </div>
 
-        <div className="relative w-full md:w-56">
-          <FolderTree className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <select
-            value={selectedCategory}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50 text-slate-700"
+        {/* Multi-Category Filter Dropdown */}
+        <div className="relative w-full md:w-56" ref={categoryMenuRef}>
+          <button
+            type="button"
+            onClick={() => {
+              setIsCategoryMenuOpen(!isCategoryMenuOpen)
+              setIsLocationMenuOpen(false)
+            }}
+            className="w-full flex items-center justify-between pl-3.5 pr-3 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer text-slate-700"
           >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            <div className="flex items-center gap-2 truncate">
+              <FolderTree className="w-4 h-4 text-slate-400 shrink-0" />
+              <span className="truncate">
+                {selectedCategoryIds.length === 0
+                  ? 'All Categories'
+                  : `Categories (${selectedCategoryIds.length})`}
+              </span>
+            </div>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          </button>
+
+          {isCategoryMenuOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-30 max-h-64 overflow-y-auto space-y-1">
+              <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
+                <span>Filter Categories</span>
+                {selectedCategoryIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate({
+                        search: (prev) => ({
+                          ...prev,
+                          category_ids: undefined,
+                          category_id: undefined,
+                        }),
+                      })
+                    }}
+                    className="text-blue-600 hover:underline font-normal text-[11px] cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {categories.map((c) => {
+                const checked = selectedCategoryIds.includes(c.id)
+                return (
+                  <label
+                    key={c.id}
+                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-slate-50 cursor-pointer text-xs text-slate-700 select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleCategory(c.id)}
+                      className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                    />
+                    <span className="truncate font-medium">{c.name}</span>
+                  </label>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        <div className="relative w-full md:w-56">
-          <MapPin className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <select
-            value={selectedLocation}
-            onChange={(e) => handleLocationChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50 text-slate-700"
+        {/* Multi-Location Filter Dropdown */}
+        <div className="relative w-full md:w-56" ref={locationMenuRef}>
+          <button
+            type="button"
+            onClick={() => {
+              setIsLocationMenuOpen(!isLocationMenuOpen)
+              setIsCategoryMenuOpen(false)
+            }}
+            className="w-full flex items-center justify-between pl-3.5 pr-3 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer text-slate-700"
           >
-            <option value="">All Locations</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>
-                {loc.name}
-              </option>
-            ))}
-          </select>
+            <div className="flex items-center gap-2 truncate">
+              <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+              <span className="truncate">
+                {selectedLocationIds.length === 0
+                  ? 'All Locations'
+                  : `Locations (${selectedLocationIds.length})`}
+              </span>
+            </div>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          </button>
+
+          {isLocationMenuOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-30 max-h-64 overflow-y-auto space-y-1">
+              <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
+                <span>Filter Locations</span>
+                {selectedLocationIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate({
+                        search: (prev) => ({
+                          ...prev,
+                          location_ids: undefined,
+                          location_id: undefined,
+                        }),
+                      })
+                    }}
+                    className="text-blue-600 hover:underline font-normal text-[11px] cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {locations.map((loc) => {
+                const checked = selectedLocationIds.includes(loc.id)
+                return (
+                  <label
+                    key={loc.id}
+                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-slate-50 cursor-pointer text-xs text-slate-700 select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleLocation(loc.id)}
+                      className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                    />
+                    <span className="truncate font-medium">{loc.name}</span>
+                  </label>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
-      {(selectedCategory || selectedLocation) && (
+      {/* Active Filter Chips */}
+      {(selectedCategoryIds.length > 0 || selectedLocationIds.length > 0) && (
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          {selectedCategory && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50/90 border border-blue-200 rounded-xl text-xs text-blue-900">
-              <FolderTree className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-              <span>
-                Category: <strong>{categories.find((c) => c.id === selectedCategory)?.name || 'Selected'}</strong>
-              </span>
-              <button
-                onClick={() => handleCategoryChange('')}
-                className="hover:text-blue-600 p-0.5 rounded hover:bg-blue-100 transition-colors cursor-pointer"
-                title="Clear category filter"
+          {selectedCategoryIds.map((catId) => {
+            const cat = categories.find((c) => c.id === catId)
+            return (
+              <div
+                key={catId}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50/90 border border-blue-200 rounded-xl text-xs text-blue-900"
               >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+                <FolderTree className="w-3 h-3 text-blue-600 shrink-0" />
+                <span className="font-medium">{cat?.name || 'Category'}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleCategory(catId)}
+                  className="hover:text-blue-600 p-0.5 rounded hover:bg-blue-100 transition-colors cursor-pointer"
+                  title="Remove category filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )
+          })}
 
-          {selectedLocation && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50/90 border border-blue-200 rounded-xl text-xs text-blue-900">
-              <MapPin className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-              <span>
-                Location: <strong>{locations.find((l) => l.id === selectedLocation)?.name || 'Selected Location'}</strong>
-              </span>
-              <button
-                onClick={() => handleLocationChange('')}
-                className="hover:text-blue-600 p-0.5 rounded hover:bg-blue-100 transition-colors cursor-pointer"
-                title="Clear location filter"
+          {selectedLocationIds.map((locId) => {
+            const loc = locations.find((l) => l.id === locId)
+            return (
+              <div
+                key={locId}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50/90 border border-emerald-200 rounded-xl text-xs text-emerald-900"
               >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+                <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
+                <span className="font-medium">{loc?.name || 'Location'}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleLocation(locId)}
+                  className="hover:text-emerald-600 p-0.5 rounded hover:bg-emerald-100 transition-colors cursor-pointer"
+                  title="Remove location filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )
+          })}
 
-          {selectedCategory && selectedLocation && (
-            <button
-              onClick={() => {
-                navigate({
-                  search: (prev) => ({
-                    ...prev,
-                    category_id: undefined,
-                    location_id: undefined,
-                  }),
-                })
-              }}
-              className="text-xs text-slate-500 hover:text-slate-800 underline px-1 py-1 cursor-pointer"
-            >
-              Clear all filters
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            className="text-xs text-slate-500 hover:text-slate-800 underline px-1 py-1 cursor-pointer font-medium"
+          >
+            Clear all filters
+          </button>
         </div>
       )}
 
       {/* Products List */}
       {!isLoading && !error && products.length > 0 && (
         <div className="flex items-center justify-between px-1 mb-3 text-xs text-slate-500">
-          <label className="flex items-center gap-2 cursor-pointer hover:text-slate-800 select-none font-medium">
-            <input
-              type="checkbox"
-              checked={selectedProductIds.size === products.length && products.length > 0}
-              onChange={() => toggleSelectAll(products.map((p) => p.id))}
-              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
-            />
-            <span>Select all ({products.length})</span>
-          </label>
+          {canManage ? (
+            <label className="flex items-center gap-2 cursor-pointer hover:text-slate-800 select-none font-medium">
+              <input
+                type="checkbox"
+                checked={selectedProductIds.size === products.length && products.length > 0}
+                onChange={() => toggleSelectAll(products.map((p) => p.id))}
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+              />
+              <span>Select all ({products.length})</span>
+            </label>
+          ) : (
+            <span className="font-medium text-slate-600">Product Catalog</span>
+          )}
           <span>Showing {products.length} products</span>
         </div>
       )}
@@ -815,7 +989,7 @@ function ProductsPage() {
           <Package className="w-10 h-10 text-slate-300 mx-auto mb-2" />
           <h3 className="font-semibold text-slate-700">No products found</h3>
           <p className="text-sm text-slate-500 mt-1">
-            {selectedCategory || selectedLocation
+            {selectedCategoryIds.length > 0 || selectedLocationIds.length > 0
               ? 'No products match the active filters. Try clearing category or location filter.'
               : 'Try adjusting your search query.'}
           </p>
@@ -825,9 +999,15 @@ function ProductsPage() {
           {products.map((item) => {
             const hasStock = item.total_stock > 0
             const isSelected = selectedProductIds.has(item.id)
-            const locationStockItem = selectedLocation
-              ? item.stocks.find((st) => st.location_id === selectedLocation)
+            const cartItem = cartItems.find((ci) => ci.product.id === item.id)
+            const cartQuantity = cartItem ? cartItem.quantity : 0
+
+            const filteredLocationUnits = selectedLocationIds.length > 0
+              ? item.stocks
+                  .filter((st) => selectedLocationIds.includes(st.location_id))
+                  .reduce((sum, st) => sum + st.quantity, 0)
               : null
+
             return (
               <div
                 key={item.id}
@@ -837,14 +1017,16 @@ function ProductsPage() {
               >
                 {/* Checkbox & Product Info */}
                 <div className="flex items-start gap-3 flex-1">
-                  <div className="pt-1">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelectProduct(item.id)}
-                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
-                    />
-                  </div>
+                  {canManage && (
+                    <div className="pt-1">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectProduct(item.id)}
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+                      />
+                    </div>
+                  )}
 
                   <div className="flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -852,7 +1034,7 @@ function ProductsPage() {
                       {item.category && (
                         <span
                           className={`text-xs px-2.5 py-0.5 rounded-full font-medium transition-all ${
-                            selectedCategory === item.category.id
+                            selectedCategoryIds.includes(item.category.id)
                               ? 'bg-blue-600 text-white font-semibold shadow-xs'
                               : 'bg-blue-50 text-blue-700'
                           }`}
@@ -889,7 +1071,7 @@ function ProductsPage() {
                       ) : (
                         <div className="flex flex-wrap gap-2">
                           {item.stocks.map((st) => {
-                            const isCurrentLocation = selectedLocation === st.location_id
+                            const isCurrentLocation = selectedLocationIds.includes(st.location_id)
                             return (
                               <div
                                 key={st.location_id}
@@ -931,14 +1113,14 @@ function ProductsPage() {
                     </div>
 
                     <div className="text-right">
-                      {locationStockItem ? (
+                      {filteredLocationUnits !== null ? (
                         <>
                           <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">
-                            Location Units
+                            {selectedLocationIds.length === 1 ? 'Location Units' : 'Selected Units'}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5 justify-end">
                             <span className="text-2xl font-black text-blue-700">
-                              {locationStockItem.quantity}
+                              {filteredLocationUnits}
                             </span>
                             <span className="text-xs text-slate-400 font-medium">
                               (Total: {item.total_stock})
@@ -976,15 +1158,29 @@ function ProductsPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => setStickerModalProducts([item])}
-                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer"
-                      title="Print Price Sticker"
+                      type="button"
+                      onClick={() => addToCart(item)}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                      title="Add to sales cart"
                     >
-                      <Printer className="w-4 h-4" />
+                      <ShoppingCart className="w-3.5 h-3.5" />
+                      <span>Add to Cart</span>
+                      {cartQuantity > 0 && (
+                        <span className="bg-blue-800 text-white rounded-full px-1.5 py-0.2 text-[10px] font-bold">
+                          {cartQuantity}
+                        </span>
+                      )}
                     </button>
 
                     {canManage && (
                       <>
+                        <button
+                          onClick={() => setStickerModalProducts([item])}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer"
+                          title="Print Price Sticker"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => {
                             setStockAdjustProduct(item)
@@ -1113,6 +1309,34 @@ function ProductsPage() {
             queryClient.invalidateQueries({ queryKey: ['products'] })
           }}
         />
+      )}
+
+      {/* Floating Checkout Bar */}
+      {cartItems.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700/60 flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-600 rounded-xl text-white">
+              <ShoppingCart className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs text-slate-300 font-medium">Cart Active</div>
+              <div className="text-sm font-bold">
+                {cartItems.reduce((sum, i) => sum + i.quantity, 0)} items • ₴
+                {cartItems
+                  .reduce((sum, i) => sum + i.quantity * i.price, 0)
+                  .toFixed(2)}
+              </div>
+            </div>
+          </div>
+          <Link
+            to="/sales"
+            search={{ openCheckout: true }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>Proceed to Checkout</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       )}
     </div>
   )

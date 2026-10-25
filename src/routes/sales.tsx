@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import axios from 'axios'
 import { api } from '../api/api'
+import { useCartStore } from '../store/cartStore'
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal'
 import {
   Receipt,
@@ -101,7 +102,9 @@ function SalesPage() {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Modals
-  const [isNewSaleOpen, setIsNewSaleOpen] = useState(false)
+  const [isNewSaleOpen, setIsNewSaleOpen] = useState(() => {
+    return typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('openCheckout') === 'true'
+  })
   const [viewingSale, setViewingSale] = useState<SaleRecord | null>(null)
   const [refundConfirmSale, setRefundConfirmSale] = useState<SaleRecord | null>(null)
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
@@ -382,9 +385,10 @@ function SalesPage() {
                       #{sale.id.slice(0, 8)}
                       {sale.customer_notes && (
                         <span
-                          className="ml-1.5 inline-block text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded font-sans font-medium"
-                          title={sale.customer_notes}
+                          className="ml-1.5 inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-sans font-medium border border-amber-200"
+                          title={`Internal Note: ${sale.customer_notes}`}
                         >
+                          <FileText className="w-2.5 h-2.5 text-amber-600" />
                           Note
                         </span>
                       )}
@@ -562,10 +566,29 @@ function NewSaleModal({
   onClose: () => void
   onSuccess: (sale: SaleRecord) => void
 }) {
+  const cartStoreItems = useCartStore((s) => s.items)
+  const clearCartStore = useCartStore((s) => s.clearCart)
+
   const [locationId, setLocationId] = useState<string>(locations[0]?.id || '')
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash')
   const [productSearch, setProductSearch] = useState('')
-  const [cart, setCart] = useState<CartItem[]>([])
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    if (cartStoreItems.length > 0) {
+      return cartStoreItems.map((item) => ({
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+          sku: item.product.sku,
+          price: Number(item.price) || 0,
+          barcode: item.product.barcode,
+          stocks: item.product.stocks || [],
+        },
+        quantity: item.quantity,
+        price: Number(item.price) || 0,
+      }))
+    }
+    return []
+  })
   const [discountPercentage, setDiscountPercentage] = useState<number>(0)
   const [customerNotes, setCustomerNotes] = useState<string>('')
   const [errorBanner, setErrorBanner] = useState<string | null>(null)
@@ -709,6 +732,7 @@ function NewSaleModal({
       }
 
       const res = await api.post('/api/v1/sales', payload)
+      clearCartStore()
       onSuccess(res.data)
     } catch (err: unknown) {
       let msg = 'Failed to create sale'
@@ -1206,9 +1230,14 @@ function ReceiptModal({
               <span className="font-semibold text-slate-900 uppercase">{sale.payment_method}</span>
             </div>
             {sale.customer_notes && (
-              <div className="pt-2 border-t border-slate-100 flex items-start gap-1 text-slate-700">
-                <FileText className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
-                <span className="italic">Note: {sale.customer_notes}</span>
+              <div className="pt-2.5 mt-2 border-t border-slate-100 flex items-start gap-2 text-xs bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/60 text-amber-900">
+                <FileText className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-bold text-[10px] uppercase tracking-wider block text-amber-800">
+                    Internal Note (Not printed on receipts)
+                  </span>
+                  <span className="italic">{sale.customer_notes}</span>
+                </div>
               </div>
             )}
           </div>
@@ -1474,20 +1503,6 @@ function DedicatedPrintReceipt({
             </div>
           </div>
 
-          {sale.customer_notes && (
-            <div
-              style={{
-                marginTop: '6px',
-                padding: '4px',
-                border: '1px dotted #666',
-                fontSize: '9px',
-                fontStyle: 'italic',
-              }}
-            >
-              Note: {sale.customer_notes}
-            </div>
-          )}
-
           <div style={{ borderTop: '1px dashed #000', margin: '8px 0' }} />
 
           {/* Footer */}
@@ -1569,11 +1584,6 @@ function DedicatedPrintReceipt({
               </div>
               <div>Cashier: {sale.user.email}</div>
               <div>Payment Method: {sale.payment_method.toUpperCase()}</div>
-              {sale.customer_notes && (
-                <div style={{ marginTop: '4px', fontStyle: 'italic', color: '#1f2937' }}>
-                  Customer Note: {sale.customer_notes}
-                </div>
-              )}
             </div>
           </div>
 

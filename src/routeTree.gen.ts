@@ -10,31 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as CategoriesRouteImport } from './routes/categories'
-import { Route as LocationsRouteImport } from './routes/locations'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ManagementRouteImport } from './routes/management'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as SalesRouteImport } from './routes/sales'
-import { Route as ScanRouteImport } from './routes/scan'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CategoriesRoute = CategoriesRouteImport.update({
-  id: '/categories',
-  path: '/categories',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LocationsRoute = LocationsRouteImport.update({
-  id: '/locations',
-  path: '/locations',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManagementRoute = ManagementRouteImport.update({
+  id: '/management',
+  path: '/management',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsRoute = ProductsRouteImport.update({
@@ -47,78 +40,43 @@ const SalesRoute = SalesRouteImport.update({
   path: '/sales',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ScanRoute = ScanRouteImport.update({
-  id: '/scan',
-  path: '/scan',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/categories': typeof CategoriesRoute
-  '/locations': typeof LocationsRoute
   '/login': typeof LoginRoute
+  '/management': typeof ManagementRoute
   '/products': typeof ProductsRoute
   '/sales': typeof SalesRoute
-  '/scan': typeof ScanRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/categories': typeof CategoriesRoute
-  '/locations': typeof LocationsRoute
   '/login': typeof LoginRoute
+  '/management': typeof ManagementRoute
   '/products': typeof ProductsRoute
   '/sales': typeof SalesRoute
-  '/scan': typeof ScanRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/categories': typeof CategoriesRoute
-  '/locations': typeof LocationsRoute
   '/login': typeof LoginRoute
+  '/management': typeof ManagementRoute
   '/products': typeof ProductsRoute
   '/sales': typeof SalesRoute
-  '/scan': typeof ScanRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/categories'
-    | '/locations'
-    | '/login'
-    | '/products'
-    | '/sales'
-    | '/scan'
+  fullPaths: '/' | '/login' | '/management' | '/products' | '/sales'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/categories'
-    | '/locations'
-    | '/login'
-    | '/products'
-    | '/sales'
-    | '/scan'
-  id:
-    | '__root__'
-    | '/'
-    | '/categories'
-    | '/locations'
-    | '/login'
-    | '/products'
-    | '/sales'
-    | '/scan'
+  to: '/' | '/login' | '/management' | '/products' | '/sales'
+  id: '__root__' | '/' | '/login' | '/management' | '/products' | '/sales'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CategoriesRoute: typeof CategoriesRoute
-  LocationsRoute: typeof LocationsRoute
   LoginRoute: typeof LoginRoute
+  ManagementRoute: typeof ManagementRoute
   ProductsRoute: typeof ProductsRoute
   SalesRoute: typeof SalesRoute
-  ScanRoute: typeof ScanRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -130,25 +88,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/categories': {
-      id: '/categories'
-      path: '/categories'
-      fullPath: '/categories'
-      preLoaderRoute: typeof CategoriesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/locations': {
-      id: '/locations'
-      path: '/locations'
-      fullPath: '/locations'
-      preLoaderRoute: typeof LocationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/management': {
+      id: '/management'
+      path: '/management'
+      fullPath: '/management'
+      preLoaderRoute: typeof ManagementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products': {
@@ -165,24 +116,15 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SalesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/scan': {
-      id: '/scan'
-      path: '/scan'
-      fullPath: '/scan'
-      preLoaderRoute: typeof ScanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CategoriesRoute: CategoriesRoute,
-  LocationsRoute: LocationsRoute,
   LoginRoute: LoginRoute,
+  ManagementRoute: ManagementRoute,
   ProductsRoute: ProductsRoute,
   SalesRoute: SalesRoute,
-  ScanRoute: ScanRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
