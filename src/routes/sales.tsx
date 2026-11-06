@@ -394,10 +394,10 @@ function SalesPage() {
                       )}
                     </td>
                     <td className="py-3.5 px-4 text-slate-600 whitespace-nowrap">
-                      {new Date(sale.created_at).toLocaleString('uk-UA', {
+                      {new Date(sale.created_at).toLocaleString('nl-NL', {
+                        day: '2-digit',
+                        month: '2-digit',
                         year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
@@ -1197,10 +1197,10 @@ function ReceiptModal({
                 <Clock className="w-3.5 h-3.5" /> Date & Time:
               </span>
               <span className="font-medium text-slate-900">
-                {new Date(sale.created_at).toLocaleString('uk-UA', {
+                {new Date(sale.created_at).toLocaleString('nl-NL', {
+                  day: '2-digit',
+                  month: '2-digit',
                   year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit',
                 })}
@@ -1426,10 +1426,10 @@ function DedicatedPrintReceipt({
             <div style={{ fontSize: '15px', fontWeight: 'bold' }}>PRODUCTS TRACKER UA</div>
             <div style={{ fontSize: '10px' }}>{sale.location.name}</div>
             <div style={{ fontSize: '10px', marginTop: '2px' }}>
-              {new Date(sale.created_at).toLocaleString('uk-UA', {
-                year: 'numeric',
-                month: '2-digit',
+              {new Date(sale.created_at).toLocaleString('nl-NL', {
                 day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
               })}
@@ -1549,10 +1549,10 @@ function DedicatedPrintReceipt({
               <div style={{ fontSize: '14px', fontWeight: 'bold' }}>Receipt #{sale.id.slice(0, 8).toUpperCase()}</div>
               <div style={{ color: '#4b5563', fontSize: '11px' }}>
                 Date:{' '}
-                {new Date(sale.created_at).toLocaleString('uk-UA', {
+                {new Date(sale.created_at).toLocaleString('nl-NL', {
+                  day: '2-digit',
+                  month: '2-digit',
                   year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit',
                 })}

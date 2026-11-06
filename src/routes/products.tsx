@@ -25,6 +25,7 @@ import {
   ChevronDown,
   ShoppingCart,
   ArrowRight,
+  TrendingUp,
 } from 'lucide-react'
 import { useCartStore } from '../store/cartStore'
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal'
@@ -56,6 +57,20 @@ interface StockRecord {
   quantity: number
 }
 
+interface PriceHistorySnapshot {
+  id: string
+  supply_id: string
+  reference_number?: string | null
+  supply_status?: string | null
+  supplier_name?: string | null
+  location_name?: string | null
+  quantity: number
+  cost_price: number
+  selling_price: number
+  received_at?: string | null
+  created_at: string
+}
+
 interface ProductRecord {
   id: string
   name: string
@@ -71,6 +86,7 @@ interface ProductRecord {
   }
   total_stock: number
   stocks: StockRecord[]
+  price_history?: PriceHistorySnapshot[]
   created_at: string
 }
 
@@ -82,6 +98,149 @@ interface CategoryOption {
 interface LocationOption {
   id: string
   name: string
+}
+
+function PriceHistoryModal({
+  product,
+  onClose,
+}: {
+  product: ProductRecord
+  onClose: () => void
+}) {
+  const history = product.price_history || []
+  const latestSnapshot = history[0]
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full overflow-hidden my-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Supply Price History — {product.name}
+              </h3>
+              <p className="text-xs text-slate-500 font-mono">
+                {product.sku} • Current Retail Price: ₴{product.price.toFixed(2)}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <div className="text-[10px] font-bold uppercase text-slate-400">
+                Current Selling Price
+              </div>
+              <div className="text-lg font-bold text-slate-900 mt-0.5">
+                ₴{product.price.toFixed(2)}
+              </div>
+            </div>
+            <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/70">
+              <div className="text-[10px] font-bold uppercase text-amber-700">
+                Latest Supplier Cost
+              </div>
+              <div className="text-lg font-bold text-amber-900 mt-0.5">
+                {latestSnapshot ? `₴${latestSnapshot.cost_price.toFixed(2)}` : '—'}
+              </div>
+            </div>
+            <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200/70">
+              <div className="text-[10px] font-bold uppercase text-emerald-700">
+                Latest Unit Margin
+              </div>
+              <div className="text-lg font-bold text-emerald-900 mt-0.5">
+                {latestSnapshot
+                  ? `+₴${(latestSnapshot.selling_price - latestSnapshot.cost_price).toFixed(2)}`
+                  : '—'}
+              </div>
+            </div>
+          </div>
+
+          {history.length === 0 ? (
+            <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs text-slate-500">
+              No supply price snapshots recorded for this product yet.
+            </div>
+          ) : (
+            <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500">
+                    <th className="py-2.5 px-4">Supply / Date</th>
+                    <th className="py-2.5 px-3">Supplier & Store</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3 text-right">Qty</th>
+                    <th className="py-2.5 px-3 text-right">Cost Price</th>
+                    <th className="py-2.5 px-4 text-right">Selling Price</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {history.map((snap) => (
+                    <tr key={snap.id} className="hover:bg-slate-50/70">
+                      <td className="py-3 px-4">
+                        <div className="font-semibold text-slate-900">
+                          {snap.reference_number || `SUP-${snap.supply_id.slice(0, 6).toUpperCase()}`}
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          {new Date(snap.received_at || snap.created_at).toLocaleDateString('nl-NL', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                          })}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="font-medium text-slate-800">
+                          {snap.supplier_name || 'Unknown Supplier'}
+                        </div>
+                        <div className="text-[11px] text-slate-400">{snap.location_name}</div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            snap.supply_status === 'received'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : snap.supply_status === 'cancelled'
+                                ? 'bg-red-50 text-red-700'
+                                : 'bg-amber-50 text-amber-700'
+                          }`}
+                        >
+                          {snap.supply_status || 'pending'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-right font-semibold text-slate-700">
+                        {snap.quantity}
+                      </td>
+                      <td className="py-3 px-3 text-right font-semibold text-amber-800">
+                        ₴{snap.cost_price.toFixed(2)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-blue-700">
+                        ₴{snap.selling_price.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function ProductModal({
@@ -558,6 +717,7 @@ function ProductsPage() {
   // Selection & Price Sticker Printing state
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set())
   const [stickerModalProducts, setStickerModalProducts] = useState<ProductRecord[] | null>(null)
+  const [priceHistoryProduct, setPriceHistoryProduct] = useState<ProductRecord | null>(null)
 
   const toggleSelectProduct = (id: string) => {
     setSelectedProductIds((prev) => {
@@ -1175,6 +1335,13 @@ function ProductsPage() {
                     {canManage && (
                       <>
                         <button
+                          onClick={() => setPriceHistoryProduct(item)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
+                          title="View Supply Price History"
+                        >
+                          <TrendingUp className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => setStickerModalProducts([item])}
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer"
                           title="Print Price Sticker"
@@ -1308,6 +1475,14 @@ function ProductsPage() {
           onProductUpdated={() => {
             queryClient.invalidateQueries({ queryKey: ['products'] })
           }}
+        />
+      )}
+
+      {/* Supply Price History Modal */}
+      {priceHistoryProduct && (
+        <PriceHistoryModal
+          product={priceHistoryProduct}
+          onClose={() => setPriceHistoryProduct(null)}
         />
       )}
 

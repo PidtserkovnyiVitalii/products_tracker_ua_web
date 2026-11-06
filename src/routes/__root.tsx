@@ -2,7 +2,7 @@ import { createRootRoute, Link, Outlet, useNavigate } from '@tanstack/react-rout
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
-import { Package, LogIn, LogOut, LayoutDashboard, Receipt, Settings2, ShoppingCart } from 'lucide-react'
+import { Package, LogIn, LogOut, LayoutDashboard, Receipt, Settings2, ShoppingCart, Truck } from 'lucide-react'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -61,6 +61,15 @@ function RootComponent() {
                   <Receipt className="w-4 h-4" />
                   Sales
                 </Link>
+                {!isCashier && (
+                  <Link
+                    to="/supplies"
+                    className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
+                  >
+                    <Truck className="w-4 h-4" />
+                    Supplies
+                  </Link>
+                )}
                 {!isCashier && (
                   <Link
                     to="/management"

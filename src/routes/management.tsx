@@ -21,11 +21,16 @@ import {
   Store,
   ArrowRight,
   Settings2,
+  Truck,
+  Phone,
+  FileText,
 } from 'lucide-react'
 
 export const Route = createFileRoute('/management')({
-  validateSearch: (search: Record<string, unknown>): { tab?: 'categories' | 'locations' } => ({
-    tab: (search.tab as 'categories' | 'locations') || 'categories',
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { tab?: 'categories' | 'locations' | 'suppliers' } => ({
+    tab: (search.tab as 'categories' | 'locations' | 'suppliers') || 'categories',
   }),
   component: ManagementPage,
 })
@@ -869,6 +874,401 @@ function LocationsManager({ canManage, token }: { canManage: boolean; token: str
 }
 
 /* =========================================================================
+   Suppliers Manager Subcomponents & Logic
+   ========================================================================= */
+
+interface SupplierRecord {
+  id: string
+  name: string
+  phone?: string | null
+  address?: string | null
+  notes?: string | null
+  supplies_count?: number
+  created_at?: string
+}
+
+function SupplierModal({
+  supplier,
+  onClose,
+  onSubmit,
+  isPending,
+  errorMsg,
+}: {
+  supplier?: SupplierRecord | null
+  onClose: () => void
+  onSubmit: (data: { name: string; phone: string; address: string; notes: string }) => void
+  isPending: boolean
+  errorMsg: string | null
+}) {
+  const [name, setName] = useState(supplier?.name || '')
+  const [phone, setPhone] = useState(supplier?.phone || '')
+  const [address, setAddress] = useState(supplier?.address || '')
+  const [notes, setNotes] = useState(supplier?.notes || '')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) return
+    onSubmit({
+      name: name.trim(),
+      phone: phone.trim(),
+      address: address.trim(),
+      notes: notes.trim(),
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 w-full max-w-md overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="text-lg font-bold text-slate-800">
+            {supplier ? 'Edit Supplier' : 'New Supplier'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6">
+          {errorMsg && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-xs">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              Supplier Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder='e.g. ТОВ "Кідс Імпорт Україна"'
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              required
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              Phone Number (Optional)
+            </label>
+            <input
+              type="text"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g. +380 44 234 5678"
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              Address (Optional)
+            </label>
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="e.g. вул. Промислова, 14, Київ"
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+          </div>
+
+          <div className="mb-5">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              Notes (Optional)
+            </label>
+            <textarea
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Delivery schedule, payment terms, contact person..."
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !name.trim()}
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              {isPending ? 'Saving...' : supplier ? 'Save Changes' : 'Create Supplier'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function SuppliersManager({ canManage, token }: { canManage: boolean; token: string | null }) {
+  const queryClient = useQueryClient()
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingSupplier, setEditingSupplier] = useState<SupplierRecord | null>(null)
+  const [modalError, setModalError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  const { data: suppliers = [], isLoading, error } = useQuery<SupplierRecord[]>({
+    queryKey: ['suppliers'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/suppliers')
+      return res.data
+    },
+    enabled: !!token,
+  })
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { name: string; phone: string; address: string; notes: string }) => {
+      const res = await api.post('/api/v1/suppliers', { supplier: data })
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+      setIsModalOpen(false)
+      setModalError(null)
+      setSuccessMsg('Supplier created successfully!')
+      setTimeout(() => setSuccessMsg(null), 3000)
+    },
+    onError: (err: unknown) => {
+      let msg = 'Failed to create supplier'
+      if (axios.isAxiosError(err) && err.response?.data?.errors) {
+        msg =
+          typeof err.response.data.errors === 'string'
+            ? err.response.data.errors
+            : JSON.stringify(err.response.data.errors)
+      }
+      setModalError(msg)
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string
+      data: { name: string; phone: string; address: string; notes: string }
+    }) => {
+      const res = await api.put(`/api/v1/suppliers/${id}`, { supplier: data })
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+      setIsModalOpen(false)
+      setEditingSupplier(null)
+      setModalError(null)
+      setSuccessMsg('Supplier updated successfully!')
+      setTimeout(() => setSuccessMsg(null), 3000)
+    },
+    onError: (err: unknown) => {
+      let msg = 'Failed to update supplier'
+      if (axios.isAxiosError(err) && err.response?.data?.errors) {
+        msg =
+          typeof err.response.data.errors === 'string'
+            ? err.response.data.errors
+            : JSON.stringify(err.response.data.errors)
+      }
+      setModalError(msg)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/api/v1/suppliers/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+      setSuccessMsg('Supplier removed.')
+      setTimeout(() => setSuccessMsg(null), 3000)
+    },
+    onError: (err: unknown) => {
+      let msg = 'Failed to delete supplier.'
+      if (axios.isAxiosError(err) && err.response?.data?.errors) {
+        msg =
+          typeof err.response.data.errors === 'string'
+            ? err.response.data.errors
+            : JSON.stringify(err.response.data.errors)
+      }
+      alert(msg)
+    },
+  })
+
+  const handleDelete = (supplier: SupplierRecord) => {
+    if (confirm(`Are you sure you want to delete supplier "${supplier.name}"?`)) {
+      deleteMutation.mutate(supplier.id)
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Suppliers & Vendors</h2>
+          <p className="text-xs text-slate-500">
+            Configure product distributors, contact information, and delivery terms
+          </p>
+        </div>
+        {canManage && (
+          <button
+            onClick={() => {
+              setEditingSupplier(null)
+              setModalError(null)
+              setIsModalOpen(true)
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Add Supplier
+          </button>
+        )}
+      </div>
+
+      {successMsg && (
+        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-700 text-xs">
+          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="text-center py-12 text-slate-400 text-sm">Loading suppliers...</div>
+      ) : error ? (
+        <div className="p-4 bg-red-50 text-red-700 rounded-xl text-xs">
+          Failed to load suppliers.
+        </div>
+      ) : suppliers.length === 0 ? (
+        <div className="text-center py-16 bg-white border border-dashed border-slate-300 rounded-2xl">
+          <Truck className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+          <h3 className="font-semibold text-slate-700 text-sm">No suppliers registered</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Add your first supplier to start recording inventory supplies.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {suppliers.map((sup) => (
+            <div
+              key={sup.id}
+              className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                    <Truck className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {sup.supplies_count ?? 0} {sup.supplies_count === 1 ? 'Supply' : 'Supplies'}
+                  </span>
+                </div>
+
+                <h3 className="font-bold text-slate-900 text-base mb-2">{sup.name}</h3>
+
+                <div className="space-y-1.5 mb-4">
+                  <p className="text-xs text-slate-600 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+                    <span>{sup.phone || 'No phone number'}</span>
+                  </p>
+                  <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+                    <span>{sup.address || 'No address specified'}</span>
+                  </p>
+                  {sup.notes && (
+                    <p className="text-xs text-slate-500 flex items-start gap-1.5 pt-1 border-t border-slate-100 mt-2">
+                      <FileText className="w-3.5 h-3.5 flex-shrink-0 text-slate-400 mt-0.5" />
+                      <span className="line-clamp-2">{sup.notes}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <Link
+                  to="/supplies"
+                  search={{ supplier_id: sup.id }}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover:underline"
+                >
+                  <span>View Supplies</span>
+                  <ArrowRight className="w-3 h-3" />
+                </Link>
+
+                {canManage && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        setEditingSupplier(sup)
+                        setModalError(null)
+                        setIsModalOpen(true)
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                      title="Edit Supplier"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(sup)}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                      title="Delete Supplier"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isModalOpen && (
+        <SupplierModal
+          supplier={editingSupplier}
+          onClose={() => {
+            setIsModalOpen(false)
+            setEditingSupplier(null)
+          }}
+          onSubmit={(data) => {
+            if (editingSupplier) {
+              updateMutation.mutate({ id: editingSupplier.id, data })
+            } else {
+              createMutation.mutate(data)
+            }
+          }}
+          isPending={createMutation.isPending || updateMutation.isPending}
+          errorMsg={modalError}
+        />
+      )}
+    </div>
+  )
+}
+
+/* =========================================================================
    Unified Management Page Component
    ========================================================================= */
 
@@ -888,7 +1288,7 @@ function ManagementPage() {
         </div>
         <h2 className="text-xl font-bold text-slate-900 mb-2">Access Restricted</h2>
         <p className="text-sm text-slate-500 mb-6">
-          Management of categories and store locations is reserved for Stockkeepers and Administrators.
+          Management of categories, store locations, and suppliers is reserved for Stockkeepers and Administrators.
         </p>
         <Link
           to="/products"
@@ -911,7 +1311,7 @@ function ManagementPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Structure Management</h1>
             <p className="text-xs text-slate-500">
-              Taxonomy categories tree and physical location points
+              Taxonomy categories tree, physical location points, and suppliers
             </p>
           </div>
         </div>
@@ -942,6 +1342,18 @@ function ManagementPage() {
             <MapPin className="w-3.5 h-3.5" />
             <span>Locations</span>
           </button>
+          <button
+            type="button"
+            onClick={() => navigate({ search: { tab: 'suppliers' } })}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              tab === 'suppliers'
+                ? 'bg-white text-blue-600 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Truck className="w-3.5 h-3.5" />
+            <span>Suppliers</span>
+          </button>
         </div>
       </div>
 
@@ -949,8 +1361,10 @@ function ManagementPage() {
       <div className="mt-4">
         {tab === 'categories' ? (
           <CategoriesManager canManage={canManage} token={token} />
-        ) : (
+        ) : tab === 'locations' ? (
           <LocationsManager canManage={canManage} token={token} />
+        ) : (
+          <SuppliersManager canManage={canManage} token={token} />
         )}
       </div>
     </div>
