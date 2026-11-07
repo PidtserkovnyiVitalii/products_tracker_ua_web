@@ -12,6 +12,9 @@ import {
   Layers,
   Save,
   Check,
+  Tag,
+  Grid2x2,
+  Grid,
 } from 'lucide-react'
 import { api } from '../api/api'
 import { generateInternalEan13 } from '../utils/barcode'
@@ -35,6 +38,13 @@ interface PriceStickerModalProps {
   onProductUpdated?: (updatedProduct: StickerProduct) => void
 }
 
+export type StickerTemplate =
+  | 'standard'
+  | 'split4_barcode'
+  | 'split4_sku'
+  | 'split6_barcode'
+  | 'split6_sku'
+
 type PresetSize = '58x40' | '40x30' | '50x25' | 'custom'
 
 interface SizeDimensions {
@@ -49,6 +59,56 @@ const PRESETS: Record<Exclude<PresetSize, 'custom'>, SizeDimensions> = {
   '40x30': { width: 40, height: 30, nameUk: '40 × 30 мм (Компакт)', nameEn: '40 × 30 mm (Compact)' },
   '50x25': { width: 50, height: 25, nameUk: '50 × 25 мм (Вузький)', nameEn: '50 × 25 mm (Narrow)' },
 }
+
+const TEMPLATES: {
+  id: StickerTemplate
+  nameUk: string
+  nameEn: string
+  icon: typeof Tag
+  descUk: string
+  descEn: string
+}[] = [
+  {
+    id: 'standard',
+    nameUk: 'Стандартний цінник',
+    nameEn: 'Standard Price Tag',
+    icon: Tag,
+    descUk: 'Без штрихкоду • Назва + SKU + Ціна',
+    descEn: 'No barcode • Name + SKU + Price',
+  },
+  {
+    id: 'split4_barcode',
+    nameUk: '4 комірки: Штрихкоди (2×2)',
+    nameEn: '4 Cells: Barcodes (2×2)',
+    icon: Grid2x2,
+    descUk: '4 скановані штрихкоди',
+    descEn: '4 scannable barcodes',
+  },
+  {
+    id: 'split4_sku',
+    nameUk: '4 комірки: Артикули SKU (2×2)',
+    nameEn: '4 Cells: SKUs (2×2)',
+    icon: Grid2x2,
+    descUk: '4 великі артикули SKU',
+    descEn: '4 large bold SKUs',
+  },
+  {
+    id: 'split6_barcode',
+    nameUk: '6 комірок: Штрихкоди (2×3)',
+    nameEn: '6 Cells: Barcodes (2×3)',
+    icon: Grid,
+    descUk: '6 компактних штрихкодів',
+    descEn: '6 compact barcodes',
+  },
+  {
+    id: 'split6_sku',
+    nameUk: '6 комірок: Артикули SKU (2×3)',
+    nameEn: '6 Cells: SKUs (2×3)',
+    icon: Grid,
+    descUk: '6 компактних артикулів SKU',
+    descEn: '6 compact SKUs',
+  },
+]
 
 /**
  * Format currency with Ukrainian Hryvnia symbol
@@ -67,10 +127,12 @@ function BarcodeSvg({
   code,
   widthMm,
   heightMm,
+  compact = false,
 }: {
   code: string
   widthMm: number
   heightMm: number
+  compact?: boolean
 }) {
   const { tr } = useI18n()
   const svgRef = useRef<SVGSVGElement>(null)
@@ -80,8 +142,9 @@ function BarcodeSvg({
 
     // Pick barcode format: EAN13 if 13 digits, else Code 128
     const format = /^\d{13}$/.test(code) ? 'EAN13' : 'CODE128'
-    const barWidth = widthMm < 45 ? 1.2 : widthMm < 55 ? 1.5 : 1.8
-    const barHeight = heightMm < 30 ? 22 : heightMm < 38 ? 30 : 38
+    const barWidth = compact ? (widthMm < 30 ? 1.0 : 1.1) : widthMm < 45 ? 1.2 : widthMm < 55 ? 1.5 : 1.8
+    const barHeight = compact ? (heightMm < 18 ? 14 : 18) : heightMm < 30 ? 22 : heightMm < 38 ? 30 : 38
+    const fontSize = compact ? 8 : widthMm < 45 ? 9 : 11
 
     try {
       JsBarcode(svgRef.current, code, {
@@ -90,9 +153,9 @@ function BarcodeSvg({
         width: barWidth,
         height: barHeight,
         displayValue: true,
-        fontSize: widthMm < 45 ? 9 : 11,
+        fontSize,
         font: 'monospace',
-        textMargin: 1,
+        textMargin: 0,
         margin: 0,
       })
     } catch {
@@ -104,28 +167,28 @@ function BarcodeSvg({
           width: barWidth,
           height: barHeight,
           displayValue: true,
-          fontSize: 10,
+          fontSize: compact ? 8 : 10,
           font: 'monospace',
-          textMargin: 1,
+          textMargin: 0,
           margin: 0,
         })
       } catch (err) {
         console.error('Failed to render barcode:', err)
       }
     }
-  }, [code, widthMm, heightMm])
+  }, [code, widthMm, heightMm, compact])
 
   if (!code) {
     return (
-      <div className="h-10 flex items-center justify-center border border-dashed border-slate-300 rounded text-[10px] text-slate-400">
-        {tr('Штрихкод не вказано', 'No barcode set')}
+      <div className="h-full w-full flex items-center justify-center border border-dashed border-slate-300 rounded text-[9px] text-slate-400 p-1 text-center font-mono">
+        {tr('Без коду', 'No code')}
       </div>
     )
   }
 
   return (
-    <div className="flex justify-center w-full overflow-hidden">
-      <svg ref={svgRef} className="max-w-full" />
+    <div className="flex justify-center items-center w-full h-full overflow-hidden">
+      <svg ref={svgRef} className="max-w-full max-h-full" />
     </div>
   )
 }
@@ -137,15 +200,170 @@ function StickerCard({
   product,
   widthMm,
   heightMm,
+  template = 'standard',
   isPrintMode = false,
 }: {
   product: StickerProduct
   widthMm: number
   heightMm: number
+  template?: StickerTemplate
   isPrintMode?: boolean
 }) {
-  const { tr } = useI18n()
   const isCompact = heightMm <= 30 || widthMm <= 40
+
+  if (template === 'split4_barcode') {
+    return (
+      <div
+        style={{
+          width: `${widthMm}mm`,
+          height: `${heightMm}mm`,
+        }}
+        className={`bg-white text-black box-border grid grid-cols-2 grid-rows-2 overflow-hidden ${
+          isPrintMode
+            ? 'sticker-label-page'
+            : 'rounded-xl border border-slate-300 shadow-sm transition-all'
+        }`}
+      >
+        {[0, 1, 2, 3].map((cellIdx) => (
+          <div
+            key={cellIdx}
+            className={`flex items-center justify-center p-1 overflow-hidden ${
+              cellIdx % 2 === 0 ? 'border-r border-dashed border-slate-300' : ''
+            } ${cellIdx < 2 ? 'border-b border-dashed border-slate-300' : ''}`}
+          >
+            <BarcodeSvg
+              code={product.barcode || ''}
+              widthMm={widthMm / 2}
+              heightMm={heightMm / 2}
+              compact
+            />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (template === 'split4_sku') {
+    return (
+      <div
+        style={{
+          width: `${widthMm}mm`,
+          height: `${heightMm}mm`,
+        }}
+        className={`bg-white text-black box-border grid grid-cols-2 grid-rows-2 overflow-hidden ${
+          isPrintMode
+            ? 'sticker-label-page'
+            : 'rounded-xl border border-slate-300 shadow-sm transition-all'
+        }`}
+      >
+        {[0, 1, 2, 3].map((cellIdx) => (
+          <div
+            key={cellIdx}
+            className={`flex items-center justify-center p-1.5 overflow-hidden ${
+              cellIdx % 2 === 0 ? 'border-r border-dashed border-slate-300' : ''
+            } ${cellIdx < 2 ? 'border-b border-dashed border-slate-300' : ''}`}
+          >
+            <span
+              className={`font-mono font-black text-slate-950 tracking-tight text-center break-all leading-tight ${
+                product.sku.length > 14
+                  ? 'text-[9px] sm:text-[10px]'
+                  : product.sku.length > 8
+                  ? 'text-xs sm:text-sm'
+                  : 'text-sm sm:text-base'
+              }`}
+            >
+              {product.sku}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (template === 'split6_barcode') {
+    return (
+      <div
+        style={{
+          width: `${widthMm}mm`,
+          height: `${heightMm}mm`,
+        }}
+        className={`bg-white text-black box-border grid grid-cols-2 grid-rows-3 overflow-hidden ${
+          isPrintMode
+            ? 'sticker-label-page'
+            : 'rounded-xl border border-slate-300 shadow-sm transition-all'
+        }`}
+      >
+        {[0, 1, 2, 3, 4, 5].map((cellIdx) => (
+          <div
+            key={cellIdx}
+            className={`flex items-center justify-center p-0.5 overflow-hidden ${
+              cellIdx % 2 === 0 ? 'border-r border-dashed border-slate-300' : ''
+            } ${cellIdx < 4 ? 'border-b border-dashed border-slate-300' : ''}`}
+          >
+            <BarcodeSvg
+              code={product.barcode || ''}
+              widthMm={widthMm / 2}
+              heightMm={heightMm / 3}
+              compact
+            />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (template === 'split6_sku') {
+    return (
+      <div
+        style={{
+          width: `${widthMm}mm`,
+          height: `${heightMm}mm`,
+        }}
+        className={`bg-white text-black box-border grid grid-cols-2 grid-rows-3 overflow-hidden ${
+          isPrintMode
+            ? 'sticker-label-page'
+            : 'rounded-xl border border-slate-300 shadow-sm transition-all'
+        }`}
+      >
+        {[0, 1, 2, 3, 4, 5].map((cellIdx) => (
+          <div
+            key={cellIdx}
+            className={`flex items-center justify-center p-1 overflow-hidden ${
+              cellIdx % 2 === 0 ? 'border-r border-dashed border-slate-300' : ''
+            } ${cellIdx < 4 ? 'border-b border-dashed border-slate-300' : ''}`}
+          >
+            <span
+              className={`font-mono font-black text-slate-950 tracking-tight text-center break-all leading-tight ${
+                product.sku.length > 14
+                  ? 'text-[8px] sm:text-[9px]'
+                  : product.sku.length > 8
+                  ? 'text-[9px] sm:text-[10px]'
+                  : 'text-[11px] sm:text-xs'
+              }`}
+            >
+              {product.sku}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // Default: Standard Price Tag (No barcode)
+  // Top: Product Name (prominent, nicely sized to fill top section)
+  // Bottom: SKU on left, Price on right (clean, no "SKU" or "Price" labels)
+  const nameLen = product.name.length
+  const nameFontSize = isCompact
+    ? nameLen > 45
+      ? 'text-[10px] leading-tight'
+      : nameLen > 25
+      ? 'text-[11px] leading-snug'
+      : 'text-xs sm:text-sm leading-snug'
+    : nameLen > 55
+    ? 'text-xs sm:text-[13px] leading-tight'
+    : nameLen > 30
+    ? 'text-sm sm:text-base leading-snug'
+    : 'text-base sm:text-lg leading-snug'
 
   return (
     <div
@@ -155,54 +373,48 @@ function StickerCard({
       }}
       className={`bg-white text-black box-border flex flex-col justify-between overflow-hidden ${
         isPrintMode
-          ? 'sticker-label-page p-[2mm]'
+          ? 'sticker-label-page p-[2.5mm]'
           : 'p-3 rounded-xl border border-slate-300 shadow-sm transition-all'
       }`}
     >
-      {/* Top Header: Product Name & SKU */}
-      <div className="flex-1 min-h-0 flex flex-col justify-start">
-        <div className="flex items-start justify-between gap-1">
-          <h4
-            className={`font-black text-slate-900 leading-tight line-clamp-2 ${
-              isCompact ? 'text-[10px]' : 'text-xs'
-            }`}
-            title={product.name}
-          >
-            {product.name}
-          </h4>
-        </div>
-
-        <div className="flex items-center justify-between text-[9px] font-mono text-slate-600 mt-0.5">
-          <span className="truncate max-w-[70%]">SKU: {product.sku}</span>
-          {product.category && (
-            <span className="truncate max-w-[30%] text-[8px] text-slate-400">
-              {product.category.name}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Middle: Scannable Barcode SVG */}
-      <div className="my-auto py-0.5 flex flex-col items-center justify-center">
-        <BarcodeSvg
-          code={product.barcode || ''}
-          widthMm={widthMm}
-          heightMm={heightMm}
-        />
-      </div>
-
-      {/* Bottom: Retail Price */}
-      <div className="pt-0.5 border-t border-slate-200 flex items-baseline justify-between">
-        <span className="text-[8px] font-bold uppercase tracking-wider text-slate-500">
-          {tr('Ціна:', 'Price:')}
-        </span>
-        <span
-          className={`font-black text-slate-950 tracking-tight ${
-            isCompact ? 'text-sm' : 'text-base'
-          }`}
+      {/* Top section: Product Name */}
+      <div className="flex-1 min-h-0 flex flex-col justify-center overflow-hidden border-b border-slate-200/70 pb-1 mb-1">
+        <h4
+          className={`font-black text-slate-950 line-clamp-3 ${nameFontSize}`}
+          title={product.name}
         >
-          {formatPrice(product.price)}
-        </span>
+          {product.name}
+        </h4>
+      </div>
+
+      {/* Bottom section: SKU on left, Price on right (clean, no label captions) */}
+      <div className="shrink-0 flex items-center justify-between gap-2 pt-0.5">
+        {/* Left: SKU */}
+        <div className="min-w-0 flex-1 flex items-center">
+          <span
+            className={`font-mono font-bold text-slate-800 break-all leading-tight line-clamp-2 ${
+              product.sku.length > 16
+                ? 'text-[9px] sm:text-[10px]'
+                : product.sku.length > 10
+                ? 'text-[10px] sm:text-[11px]'
+                : 'text-xs sm:text-[13px]'
+            }`}
+            title={product.sku}
+          >
+            {product.sku}
+          </span>
+        </div>
+
+        {/* Right: Price */}
+        <div className="shrink-0 flex items-center pl-2 border-l border-slate-200/70">
+          <span
+            className={`font-black text-slate-950 tracking-tight whitespace-nowrap ${
+              isCompact ? 'text-sm' : 'text-base sm:text-lg'
+            }`}
+          >
+            {formatPrice(product.price)}
+          </span>
+        </div>
       </div>
     </div>
   )
@@ -216,6 +428,7 @@ export function PriceStickerModal({
 }: PriceStickerModalProps) {
   const { tr } = useI18n()
   const [items, setItems] = useState<StickerProduct[]>(initialProducts)
+  const [template, setTemplate] = useState<StickerTemplate>('standard')
   const [preset, setPreset] = useState<PresetSize>('58x40')
   const [customWidth, setCustomWidth] = useState<number>(58)
   const [customHeight, setCustomHeight] = useState<number>(40)
@@ -255,6 +468,7 @@ export function PriceStickerModal({
 
   // Any item missing barcode?
   const itemsMissingBarcode = items.filter((p) => !p.barcode)
+  const requiresBarcode = template === 'split4_barcode' || template === 'split6_barcode'
 
   const handleQuantityChange = (productId: string, val: number) => {
     setQuantities((prev) => ({
@@ -374,6 +588,7 @@ export function PriceStickerModal({
                 product={prod}
                 widthMm={activeWidth}
                 heightMm={activeHeight}
+                template={template}
                 isPrintMode
               />
             ))
@@ -400,15 +615,15 @@ export function PriceStickerModal({
               <div>
                 <h3 className="text-lg font-bold text-slate-900">
                   {items.length === 1
-                    ? tr('Друк цінника зі штрихкодом', 'Print Price Sticker')
-                    : tr('Пакетний друк цінників', 'Batch Print Price Stickers')}
+                    ? tr('Друк цінників та маркування', 'Print Price & Item Stickers')
+                    : tr('Пакетний друк цінників та маркування', 'Batch Print Price & Item Stickers')}
                 </h3>
                 <p className="text-xs text-slate-500">
                   {items.length === 1
                     ? tr(`Налаштування етикетки для ${items[0].name}`, `Configuring sticker for ${items[0].name}`)
                     : tr(
-                        `Вибрано товарів для термодруку: ${items.length}`,
-                        `${items.length} products selected for thermal printing`
+                        `Вибрано товарів для друку: ${items.length}`,
+                        `${items.length} products selected for printing`
                       )}
                 </p>
               </div>
@@ -425,8 +640,50 @@ export function PriceStickerModal({
           <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Controls Column */}
             <div className="lg:col-span-7 space-y-5">
-              {/* Missing Barcode Alert Banner */}
-              {itemsMissingBarcode.length > 0 && (
+              {/* Template Selector */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-blue-600" />
+                  {tr('Варіант етикетки / шаблону', 'Sticker Template Variation')}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {TEMPLATES.map((tmpl) => {
+                    const isSelected = template === tmpl.id
+                    const Icon = tmpl.icon
+                    return (
+                      <button
+                        key={tmpl.id}
+                        type="button"
+                        onClick={() => setTemplate(tmpl.id)}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                          isSelected
+                            ? 'border-blue-600 bg-blue-50/70 text-blue-900 font-bold shadow-xs ring-1 ring-blue-500'
+                            : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                        }`}
+                      >
+                        <div
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                            isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold leading-tight">
+                            {tr(tmpl.nameUk, tmpl.nameEn)}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-normal mt-0.5">
+                            {tr(tmpl.descUk, tmpl.descEn)}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Missing Barcode Alert Banner (Context-aware: only when barcode template is active) */}
+              {requiresBarcode && itemsMissingBarcode.length > 0 && (
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
                   <div className="flex items-start gap-2.5">
                     <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -441,8 +698,8 @@ export function PriceStickerModal({
                       </h4>
                       <p className="text-[11px] text-amber-700 mt-0.5">
                         {tr(
-                          'Призначте внутрішній код EAN-13, щоб відобразити сканований штрихкод на етикетці.',
-                          'Assign an internal EAN-13 barcode to render a scannable code on the sticker.'
+                          'Для друку штрихкодів призначте код EAN-13.',
+                          'Assign an EAN-13 barcode to print scannable codes.'
                         )}
                       </p>
                     </div>
@@ -695,10 +952,20 @@ export function PriceStickerModal({
                   product={activePreviewProduct}
                   widthMm={activeWidth}
                   heightMm={activeHeight}
+                  template={template}
                 />
               </div>
 
               <div className="w-full mt-4 p-3 bg-white rounded-xl border border-slate-200 text-xs space-y-1.5">
+                <div className="flex justify-between text-slate-600">
+                  <span>{tr('Шаблон:', 'Template:')}</span>
+                  <span className="font-semibold text-slate-900 text-right">
+                    {tr(
+                      TEMPLATES.find((t) => t.id === template)?.nameUk || '',
+                      TEMPLATES.find((t) => t.id === template)?.nameEn || ''
+                    )}
+                  </span>
+                </div>
                 <div className="flex justify-between text-slate-600">
                   <span>{tr('Вибрано товарів:', 'Selected Products:')}</span>
                   <span className="font-bold text-slate-900">{items.length}</span>
