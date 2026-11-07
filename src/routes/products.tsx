@@ -17,7 +17,7 @@ import {
   ShieldAlert,
   CheckCircle2,
   X,
-  SlidersHorizontal,
+  FileX2,
   Layers,
   Barcode,
   ScanBarcode,
@@ -488,27 +488,27 @@ function ProductModal({
   )
 }
 
-function AdjustStockModal({
+function QuickWriteOffModal({
   product,
   locations,
   onClose,
-  onSubmit,
-  isPending,
-  errorMsg,
+  onSuccess,
 }: {
   product: ProductRecord
   locations: LocationOption[]
   onClose: () => void
-  onSubmit: (data: { location_id: string; quantity: number }) => void
-  isPending: boolean
-  errorMsg: string | null
+  onSuccess: () => void
 }) {
   const { tr } = useI18n()
-  const [locationId, setLocationId] = useState(locations[0]?.id || '')
-  const [quantity, setQuantity] = useState<number>(() => {
-    const existing = product.stocks.find((s) => s.location_id === locations[0]?.id)
-    return existing ? existing.quantity : 0
-  })
+  const initialLocId = locations.find((l) => (product.stocks.find((s) => s.location_id === l.id)?.quantity || 0) > 0)?.id || locations[0]?.id || ''
+  const [locationId, setLocationId] = useState(initialLocId)
+  const currentStock = product.stocks.find((s) => s.location_id === locationId)?.quantity || 0
+
+  const [quantity, setQuantity] = useState<number>(Math.min(1, Math.max(0, currentStock)))
+  const [reason, setReason] = useState<'defect' | 'personal_use' | 'loss' | 'marketing' | 'other'>('defect')
+  const [notes, setNotes] = useState('')
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [isPending, setIsPending] = useState(false)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -520,14 +520,53 @@ function AdjustStockModal({
 
   const handleLocationChange = (locId: string) => {
     setLocationId(locId)
-    const existing = product.stocks.find((s) => s.location_id === locId)
-    setQuantity(existing ? existing.quantity : 0)
+    const stock = product.stocks.find((s) => s.location_id === locId)?.quantity || 0
+    if (quantity > stock) {
+      setQuantity(Math.max(1, stock))
+    }
   }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!locationId) return
-    onSubmit({ location_id: locationId, quantity: Math.max(0, quantity) })
+    if (!locationId || quantity <= 0) return
+
+    if (quantity > currentStock) {
+      setErrorMsg(
+        tr(
+          `Кількість (${quantity}) перевищує залишок на локації (${currentStock} шт.)`,
+          `Quantity (${quantity}) exceeds available stock (${currentStock} pcs)`
+        )
+      )
+      return
+    }
+
+    setIsPending(true)
+    setErrorMsg(null)
+
+    try {
+      await api.post('/api/v1/write_offs', {
+        location_id: locationId,
+        reason,
+        notes: notes.trim() || undefined,
+        items: [
+          {
+            product_id: product.id,
+            quantity,
+          },
+        ],
+      })
+      onSuccess()
+    } catch (err: unknown) {
+      let msg = tr('Не вдалося списати товар', 'Failed to write off product')
+      if (axios.isAxiosError(err) && err.response?.data?.errors) {
+        msg = typeof err.response.data.errors === 'string'
+          ? err.response.data.errors
+          : JSON.stringify(err.response.data.errors)
+      }
+      setErrorMsg(msg)
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (
@@ -536,15 +575,20 @@ function AdjustStockModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-6"
+        className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-bold text-slate-900">
-              {tr('Коригувати залишок', 'Adjust Stock')}
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5 truncate max-w-xs">{product.name}</p>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-rose-50 text-rose-600 rounded-xl">
+              <FileX2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                {tr('Списати товар', 'Write Off Product')}
+              </h3>
+              <p className="text-xs text-slate-500 truncate max-w-xs">{product.name}</p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -564,51 +608,88 @@ function AdjustStockModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              {tr('Виберіть магазин або склад', 'Select Store or Warehouse')}
+              {tr('Локація (Склад / Магазин)', 'Location (Warehouse / Store)')}
             </label>
             <select
               value={locationId}
               onChange={(e) => handleLocationChange(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
+              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-slate-50/50"
             >
               {locations.map((loc) => {
                 const stock = product.stocks.find((s) => s.location_id === loc.id)
+                const qty = stock ? stock.quantity : 0
                 return (
                   <option key={loc.id} value={loc.id}>
-                    {loc.name} ({tr('Зараз:', 'Current:')} {stock ? stock.quantity : 0})
+                    {loc.name} ({tr('Залишок:', 'Stock:')} {qty} {tr('шт.', 'pcs')})
                   </option>
                 )
               })}
             </select>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                {tr('Кількість', 'Quantity')}
+              </label>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                  className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={Math.max(1, currentStock)}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="w-full text-center py-2 rounded-xl border border-slate-200 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 bg-slate-50/50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setQuantity((prev) => (currentStock > 0 ? Math.min(currentStock, prev + 1) : prev + 1))}
+                  className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1">
+                {tr('Доступно:', 'Available:')} <span className="font-semibold text-slate-700">{currentStock}</span> {tr('шт.', 'pcs')}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                {tr('Причина списання', 'Reason')}
+              </label>
+              <select
+                value={reason}
+                onChange={(e) => setReason(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 bg-slate-50/50"
+              >
+                <option value="defect">{tr('Брак / Пошкодження', 'Defect / Damaged')}</option>
+                <option value="personal_use">{tr('Власні потреби', 'Personal Use')}</option>
+                <option value="loss">{tr('Втрата / Нестача', 'Loss / Shortage')}</option>
+                <option value="marketing">{tr('Маркетинг / Зразки', 'Marketing / Samples')}</option>
+                <option value="other">{tr('Інше', 'Other')}</option>
+              </select>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              {tr('Нова кількість на складі', 'New Inventory Quantity')}
+              {tr('Примітка (необов’язково)', 'Note (optional)')}
             </label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setQuantity((prev) => Math.max(0, prev - 1))}
-                className="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                min={0}
-                value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 0)}
-                className="flex-1 text-center py-2.5 rounded-xl border border-slate-200 text-base font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
-              />
-              <button
-                type="button"
-                onClick={() => setQuantity((prev) => prev + 1)}
-                className="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                +
-              </button>
-            </div>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={tr('Опишіть деталі списання (наприклад, пошкоджено при розвантаженні)', 'Describe write-off details (e.g. damaged during unloading)')}
+              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 bg-slate-50/50 resize-none"
+            />
           </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-2">
@@ -622,10 +703,11 @@ function AdjustStockModal({
             </button>
             <button
               type="submit"
-              disabled={isPending}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
+              disabled={isPending || currentStock <= 0}
+              className="px-5 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
             >
-              {isPending ? tr('Оновлення...', 'Updating...') : tr('Встановити залишок', 'Set Stock')}
+              <FileX2 className="w-4 h-4" />
+              {isPending ? tr('Списання...', 'Writing off...') : tr('Підтвердити списання', 'Confirm Write-Off')}
             </button>
           </div>
         </form>
@@ -731,7 +813,7 @@ function ProductsPage() {
   const [isSearchScannerOpen, setIsSearchScannerOpen] = useState(false)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null)
-  const [stockAdjustProduct, setStockAdjustProduct] = useState<ProductRecord | null>(null)
+  const [writeOffProduct, setWriteOffProduct] = useState<ProductRecord | null>(null)
   const [modalError, setModalError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
@@ -837,34 +919,6 @@ function ProductsPage() {
     },
     onError: (err: unknown) => {
       let msg = tr('Не вдалося зберегти товар', 'Failed to save product')
-      if (axios.isAxiosError(err) && err.response?.data?.errors) {
-        msg = typeof err.response.data.errors === 'string'
-          ? err.response.data.errors
-          : JSON.stringify(err.response.data.errors)
-      }
-      setModalError(msg)
-    },
-  })
-
-  const stockMutation = useMutation({
-    mutationFn: async (data: { location_id: string; quantity: number }) => {
-      if (!stockAdjustProduct) return
-      const res = await api.post('/api/v1/stocks/adjust', {
-        product_id: stockAdjustProduct.id,
-        location_id: data.location_id,
-        quantity: data.quantity,
-      })
-      return res.data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-      setStockAdjustProduct(null)
-      setModalError(null)
-      setSuccessMsg(tr('Залишок успішно оновлено!', 'Stock updated successfully!'))
-      setTimeout(() => setSuccessMsg(null), 3000)
-    },
-    onError: (err: unknown) => {
-      let msg = tr('Не вдалося скоригувати залишок', 'Failed to adjust stock')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg = typeof err.response.data.errors === 'string'
           ? err.response.data.errors
@@ -1417,14 +1471,13 @@ function ProductsPage() {
                         </button>
                         <button
                           onClick={() => {
-                            setStockAdjustProduct(item)
-                            setModalError(null)
+                            setWriteOffProduct(item)
                           }}
-                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
-                          title={tr('Коригувати залишок', 'Adjust inventory')}
+                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
+                          title={tr('Списати товар (брак, власні потреби тощо)', 'Write off product (defect, personal use, etc.)')}
                         >
-                          <SlidersHorizontal className="w-3.5 h-3.5" />
-                          {tr('Залишок', 'Stock')}
+                          <FileX2 className="w-3.5 h-3.5" />
+                          {tr('Списати', 'Write-Off')}
                         </button>
                         <button
                           onClick={() => {
@@ -1480,15 +1533,18 @@ function ProductsPage() {
         />
       )}
 
-      {/* Modal for Adjusting Location Stock */}
-      {stockAdjustProduct && (
-        <AdjustStockModal
-          product={stockAdjustProduct}
+      {/* Modal for Quick Write-Off */}
+      {writeOffProduct && (
+        <QuickWriteOffModal
+          product={writeOffProduct}
           locations={locations}
-          onClose={() => setStockAdjustProduct(null)}
-          onSubmit={(data) => stockMutation.mutate(data)}
-          isPending={stockMutation.isPending}
-          errorMsg={modalError}
+          onClose={() => setWriteOffProduct(null)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['products'] })
+            setWriteOffProduct(null)
+            setSuccessMsg(tr('Товар успішно списано!', 'Product written off successfully!'))
+            setTimeout(() => setSuccessMsg(null), 3500)
+          }}
         />
       )}
 

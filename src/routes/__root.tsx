@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Truck,
   ArrowLeftRight,
+  FileX2,
   Globe,
   Boxes,
   ChevronDown,
@@ -55,7 +56,7 @@ function RootComponent() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const isOperationsActive = ['/sales', '/supplies', '/movements'].some((p) => currentPath.startsWith(p))
+  const isOperationsActive = ['/sales', '/supplies', '/movements', '/write-offs'].some((p) => currentPath.startsWith(p))
 
   const handleLogout = () => {
     logout()
@@ -146,6 +147,14 @@ function RootComponent() {
                         >
                           <ArrowLeftRight className="w-4 h-4 text-blue-600" />
                           <span>{tr('Переміщення', 'Movements')}</span>
+                        </Link>
+                        <Link
+                          to="/write-offs"
+                          onClick={() => setIsOperationsOpen(false)}
+                          className="px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:text-rose-600 hover:bg-rose-50/60 flex items-center gap-2.5 transition-colors [&.active]:text-rose-600 [&.active]:bg-rose-50/80"
+                        >
+                          <FileX2 className="w-4 h-4 text-rose-600" />
+                          <span>{tr('Списання', 'Write-Offs')}</span>
                         </Link>
                       </div>
                     )}

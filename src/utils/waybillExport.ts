@@ -63,6 +63,41 @@ export interface ExportableTransfer {
   transfer_items: ExportableTransferItem[]
 }
 
+export interface ExportableWriteOffItem {
+  id: string
+  quantity: number
+  retail_price: number
+  cost_price: number
+  line_retail_total: number
+  line_cost_total: number
+  product?: {
+    name: string
+    sku: string
+    barcode?: string | null
+    category_name?: string | null
+  } | null
+}
+
+export interface ExportableWriteOff {
+  id: string
+  reference_number?: string | null
+  notes?: string | null
+  reason: 'defect' | 'personal_use' | 'loss' | 'marketing' | 'other'
+  status: 'pending' | 'completed' | 'cancelled'
+  location?: {
+    name: string
+  } | null
+  user?: {
+    email: string
+  } | null
+  total_units_count: number
+  total_retail_loss: number
+  total_cost_loss: number
+  created_at: string
+  completed_at?: string | null
+  write_off_items: ExportableWriteOffItem[]
+}
+
 function formatDate(isoString?: string | null): string {
   if (!isoString) return '—'
   try {
@@ -741,5 +776,85 @@ export function exportMovementToExcel(transfer: ExportableTransfer, locale: stri
     totalAmount: Number(transfer.total_retail_value.toFixed(2)),
     dispatchedTitle: isUk ? 'Відпустив (Здав зі складу):' : 'Dispatched (From Warehouse):',
     receivedTitle: isUk ? 'Прийняв (Отримав на складі):' : 'Received (Destination):',
+  })
+}
+
+export function getReasonLabel(reason: string, isUk: boolean): string {
+  switch (reason) {
+    case 'defect':
+      return isUk ? 'Брак / Пошкодження' : 'Defect / Damaged'
+    case 'personal_use':
+      return isUk ? 'Власні потреби' : 'Personal Use'
+    case 'loss':
+      return isUk ? 'Втрата / Нестача' : 'Loss / Shortage'
+    case 'marketing':
+      return isUk ? 'Маркетинг / Зразки' : 'Marketing / Samples'
+    case 'other':
+    default:
+      return isUk ? 'Інше' : 'Other'
+  }
+}
+
+/**
+ * Export Write-Off Act to .xlsx with Modern Dark Slate styling
+ */
+export function exportWriteOffToExcel(writeOff: ExportableWriteOff, locale: string = 'uk') {
+  const isUk = locale !== 'en'
+  const ref = writeOff.reference_number || writeOff.id.slice(0, 8).toUpperCase()
+  const docTitle = isUk
+    ? `АКТ СПИСАННЯ ТОВАРІВ № ${ref}`
+    : `INVENTORY WRITE-OFF ACT #${ref}`
+
+  const leftCard = [
+    { label: isUk ? 'Локація (Склад):' : 'Location / Warehouse:', value: writeOff.location?.name || '—' },
+    { label: isUk ? 'Відповідальна особа:' : 'Responsible Person:', value: writeOff.user?.email || '—' },
+    { label: isUk ? 'Дата складання акта:' : 'Act Date:', value: formatDate(writeOff.created_at) },
+  ]
+
+  const rightCard = [
+    { label: isUk ? 'Причина списання:' : 'Write-Off Reason:', value: getReasonLabel(writeOff.reason, isUk) },
+    { label: isUk ? 'Статус:' : 'Status:', value: getStatusLabel(writeOff.status, isUk) },
+    { label: isUk ? 'Дата завершення:' : 'Completed Date:', value: formatDate(writeOff.completed_at) },
+  ]
+
+  const items: CommonItemData[] = writeOff.write_off_items.map((item) => {
+    const unitPrice = item.cost_price > 0 ? item.cost_price : item.retail_price
+    const lineTotal = item.line_cost_total > 0 ? item.line_cost_total : item.line_retail_total
+
+    return {
+      id: item.id,
+      name: item.product?.name || '—',
+      category: item.product?.category_name || '—',
+      sku: item.product?.sku || '—',
+      barcode: item.product?.barcode || '—',
+      quantity: item.quantity,
+      unitPrice: Number(unitPrice.toFixed(2)),
+      lineTotal: Number(lineTotal.toFixed(2)),
+    }
+  })
+
+  const safeRef = ref.replace(/[^a-zA-Z0-9_-]/g, '_')
+  const dateStr = new Date().toISOString().slice(0, 10)
+  const filename = isUk
+    ? `akt_spysannya_${safeRef}_${dateStr}.xlsx`
+    : `write_off_act_${safeRef}_${dateStr}.xlsx`
+
+  const totalLoss = writeOff.total_cost_loss > 0 ? writeOff.total_cost_loss : writeOff.total_retail_loss
+
+  generateStyledWaybillSheet({
+    docTitle,
+    sheetName: isUk ? 'Акт списання' : 'Write-off Act',
+    isUk,
+    filename,
+    leftCard,
+    rightCard,
+    notes: writeOff.notes,
+    unitPriceHeader: isUk ? 'Собівартість (₴)' : 'Cost Price (₴)',
+    lineTotalHeader: isUk ? 'Сума списання (₴)' : 'Loss Total (₴)',
+    items,
+    totalUnits: writeOff.total_units_count,
+    totalAmount: Number(totalLoss.toFixed(2)),
+    dispatchedTitle: isUk ? 'Відповідальна особа (Голова комісії):' : 'Responsible Person (Head of Commission):',
+    receivedTitle: isUk ? 'Член комісії (Комірник):' : 'Commission Member (Stockkeeper):',
   })
 }

@@ -195,18 +195,29 @@ function MovementsPage() {
     searchParams.destination_location_id,
   ])
 
-  const { data: transfers = [], isLoading } = useQuery<TransferRecord[]>({
-    queryKey: ['transfers', searchQuery, filterSourceId, filterDestinationId, filterStatus],
+  const { data: allTransfers = [], isLoading } = useQuery<TransferRecord[]>({
+    queryKey: ['transfers', searchQuery, filterSourceId, filterDestinationId],
     queryFn: async () => {
       const params: Record<string, string> = {}
       if (searchQuery.trim()) params.query = searchQuery.trim()
       if (filterSourceId) params.source_location_id = filterSourceId
       if (filterDestinationId) params.destination_location_id = filterDestinationId
-      if (filterStatus) params.status = filterStatus
       const res = await api.get('/api/v1/transfers', { params })
       return res.data
     },
   })
+
+  const stats = useMemo(() => {
+    const totalCount = allTransfers.length
+    const completedCount = allTransfers.filter((t) => t.status === 'completed').length
+    const pendingCount = allTransfers.filter((t) => t.status === 'pending').length
+    return { totalCount, completedCount, pendingCount }
+  }, [allTransfers])
+
+  const transfers = useMemo(() => {
+    if (!filterStatus) return allTransfers
+    return allTransfers.filter((t) => t.status === filterStatus)
+  }, [allTransfers, filterStatus])
 
   const viewId = searchParams.view_id
 
@@ -259,13 +270,6 @@ function MovementsPage() {
       setStatusError(typeof msg === 'string' ? msg : JSON.stringify(msg))
     },
   })
-
-  const stats = useMemo(() => {
-    const totalCount = transfers.length
-    const completedCount = transfers.filter((t) => t.status === 'completed').length
-    const pendingCount = transfers.filter((t) => t.status === 'pending').length
-    return { totalCount, completedCount, pendingCount }
-  }, [transfers])
 
   if (viewMode === 'create' || viewMode === 'edit') {
     return (

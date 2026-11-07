@@ -13,7 +13,7 @@ export interface PrintableItem {
 }
 
 export interface PrintableWaybillData {
-  docType: 'supply' | 'movement'
+  docType: 'supply' | 'movement' | 'write_off'
   referenceNumber: string
   date: string
   status: string
@@ -42,7 +42,10 @@ export function PrintWaybillPortal({ data }: PrintWaybillPortalProps) {
   if (!portalNode) return null
 
   const isSupply = data.docType === 'supply'
-  const title = isSupply
+  const isWriteOff = data.docType === 'write_off'
+  const title = isWriteOff
+    ? tr(`АКТ СПИСАННЯ ТОВАРІВ № ${data.referenceNumber}`, `INVENTORY WRITE-OFF ACT #${data.referenceNumber}`)
+    : isSupply
     ? tr(`ПРИБУТКОВА НАКЛАДНА № ${data.referenceNumber}`, `GOODS RECEIPT WAYBILL #${data.referenceNumber}`)
     : tr(`НАКЛАДНА НА ВНУТРІШНЄ ПЕРЕМІЩЕННЯ № ${data.referenceNumber}`, `INTERNAL STOCK TRANSFER WAYBILL #${data.referenceNumber}`)
 
@@ -262,7 +265,11 @@ export function PrintWaybillPortal({ data }: PrintWaybillPortalProps) {
         >
           <div>
             <div style={{ fontWeight: 700, marginBottom: '22px' }}>
-              {isSupply ? tr('Відпустив (Постачальник):', 'Dispatched (Supplier):') : tr('Відпустив (Здав зі складу):', 'Dispatched (From Warehouse/Store):')}
+              {isWriteOff
+                ? tr('Відповідальна особа (Голова комісії):', 'Responsible Person (Head of Commission):')
+                : isSupply
+                ? tr('Відпустив (Постачальник):', 'Dispatched (Supplier):')
+                : tr('Відпустив (Здав зі складу):', 'Dispatched (From Warehouse/Store):')}
             </div>
             <div style={{ borderBottom: '1px solid #000', marginBottom: '4px' }}></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '9px' }}>
@@ -276,7 +283,11 @@ export function PrintWaybillPortal({ data }: PrintWaybillPortalProps) {
 
           <div>
             <div style={{ fontWeight: 700, marginBottom: '22px' }}>
-              {isSupply ? tr('Прийняв (Одержувач):', 'Received (Receiver):') : tr('Прийняв (Отримав на складі):', 'Received (Destination Store/Warehouse):')}
+              {isWriteOff
+                ? tr('Член комісії (Комірник / Одержувач):', 'Commission Member (Stockkeeper / Receiver):')
+                : isSupply
+                ? tr('Прийняв (Одержувач):', 'Received (Receiver):')
+                : tr('Прийняв (Отримав на складі):', 'Received (Destination Store/Warehouse):')}
             </div>
             <div style={{ borderBottom: '1px solid #000', marginBottom: '4px' }}></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '9px' }}>

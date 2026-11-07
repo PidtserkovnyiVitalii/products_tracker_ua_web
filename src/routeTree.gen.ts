@@ -16,6 +16,7 @@ import { Route as MovementsRouteImport } from './routes/movements'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as SuppliesRouteImport } from './routes/supplies'
+import { Route as WriteOffsRouteImport } from './routes/write-offs'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +53,11 @@ const SuppliesRoute = SuppliesRouteImport.update({
   path: '/supplies',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WriteOffsRoute = WriteOffsRouteImport.update({
+  id: '/write-offs',
+  path: '/write-offs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/products': typeof ProductsRoute
   '/sales': typeof SalesRoute
   '/supplies': typeof SuppliesRoute
+  '/write-offs': typeof WriteOffsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/products': typeof ProductsRoute
   '/sales': typeof SalesRoute
   '/supplies': typeof SuppliesRoute
+  '/write-offs': typeof WriteOffsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/products': typeof ProductsRoute
   '/sales': typeof SalesRoute
   '/supplies': typeof SuppliesRoute
+  '/write-offs': typeof WriteOffsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/sales'
     | '/supplies'
+    | '/write-offs'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/sales'
     | '/supplies'
+    | '/write-offs'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/sales'
     | '/supplies'
+    | '/write-offs'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   ProductsRoute: typeof ProductsRoute
   SalesRoute: typeof SalesRoute
   SuppliesRoute: typeof SuppliesRoute
+  WriteOffsRoute: typeof WriteOffsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuppliesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/write-offs': {
+      id: '/write-offs'
+      path: '/write-offs'
+      fullPath: '/write-offs'
+      preLoaderRoute: typeof WriteOffsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsRoute: ProductsRoute,
   SalesRoute: SalesRoute,
   SuppliesRoute: SuppliesRoute,
+  WriteOffsRoute: WriteOffsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
