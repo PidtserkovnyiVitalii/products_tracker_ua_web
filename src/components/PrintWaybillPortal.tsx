@@ -198,10 +198,9 @@ export function PrintWaybillPortal({ data }: PrintWaybillPortalProps) {
         <table className="waybill-table">
           <thead>
             <tr>
-              <th style={{ width: '32px' }}>№</th>
+              <th style={{ width: '36px' }}>№</th>
               <th style={{ textAlign: 'left' }}>{tr('Найменування товару', 'Product Name')}</th>
-              <th style={{ width: '110px' }}>{tr('Артикул / SKU', 'SKU')}</th>
-              <th style={{ width: '115px' }}>{tr('Штрихкод', 'Barcode')}</th>
+              <th style={{ width: '130px' }}>{tr('Артикул / SKU', 'SKU')}</th>
               <th style={{ width: '70px', textAlign: 'right' }}>{tr('К-сть', 'Qty')}</th>
               <th style={{ width: '85px', textAlign: 'right' }}>{tr('Ціна, ₴', 'Price, ₴')}</th>
               <th style={{ width: '95px', textAlign: 'right' }}>{tr('Сума, ₴', 'Total, ₴')}</th>
@@ -220,9 +219,6 @@ export function PrintWaybillPortal({ data }: PrintWaybillPortalProps) {
                 <td style={{ fontFamily: 'monospace', fontSize: '10px', textAlign: 'center' }}>
                   {item.sku}
                 </td>
-                <td style={{ fontFamily: 'monospace', fontSize: '10px', textAlign: 'center' }}>
-                  {item.barcode || '—'}
-                </td>
                 <td style={{ textAlign: 'right', fontWeight: 700 }}>
                   {item.quantity} {tr('шт.', 'pcs')}
                 </td>
@@ -237,7 +233,7 @@ export function PrintWaybillPortal({ data }: PrintWaybillPortalProps) {
           </tbody>
           <tfoot>
             <tr className="page-break-avoid" style={{ fontWeight: 800, backgroundColor: '#f8fafc' }}>
-              <td colSpan={4} style={{ textAlign: 'right', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <td colSpan={3} style={{ textAlign: 'right', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {tr('РАЗОМ:', 'TOTAL:')}
               </td>
               <td style={{ textAlign: 'right', fontSize: '12px' }}>
