@@ -4,6 +4,7 @@ import { useState, useMemo, type FormEvent } from 'react'
 import axios from 'axios'
 import { api } from '../api/api'
 import { useAuthStore } from '../store/authStore'
+import { useI18n } from '../i18n/i18n'
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal'
 import { generateInternalEan13 } from '../utils/barcode'
 import {
@@ -144,11 +145,12 @@ interface DraftSupplyItem {
    ========================================================================= */
 
 function StatusBadge({ status }: { status: 'pending' | 'received' | 'cancelled' }) {
+  const { tr } = useI18n()
   if (status === 'received') {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
         <CheckCircle2 className="w-3.5 h-3.5" />
-        Received (In Stock)
+        {tr('Отримано (На складі)', 'Received (In Stock)')}
       </span>
     )
   }
@@ -156,14 +158,14 @@ function StatusBadge({ status }: { status: 'pending' | 'received' | 'cancelled' 
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-200">
         <XCircle className="w-3.5 h-3.5" />
-        Cancelled
+        {tr('Скасовано', 'Cancelled')}
       </span>
     )
   }
   return (
     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
       <Clock className="w-3.5 h-3.5" />
-      Pending
+      {tr('Очікує', 'Pending')}
     </span>
   )
 }
@@ -185,7 +187,14 @@ function SupplyDetailsModal({
   onEdit: (supply: SupplyRecord) => void
   isStatusUpdating: boolean
 }) {
+  const { tr } = useI18n()
   const expectedProfit = supply.total_selling_value - supply.total_cost
+
+  const statusLabel = (st: 'pending' | 'received' | 'cancelled') => {
+    if (st === 'received') return tr('Отримано', 'Received')
+    if (st === 'cancelled') return tr('Скасовано', 'Cancelled')
+    return tr('Очікує', 'Pending')
+  }
 
   return (
     <div
@@ -200,12 +209,14 @@ function SupplyDetailsModal({
           <div>
             <div className="flex items-center gap-2.5">
               <h2 className="text-lg font-bold text-slate-900">
-                {supply.reference_number || `Supply #${supply.id.slice(0, 8).toUpperCase()}`}
+                {supply.reference_number || `${tr('Поставка', 'Supply')} #${supply.id.slice(0, 8).toUpperCase()}`}
               </h2>
               <StatusBadge status={supply.status} />
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Supplier: <strong className="text-slate-700">{supply.supplier?.name}</strong> • Destination:{' '}
+              {tr('Постачальник:', 'Supplier:')}{' '}
+              <strong className="text-slate-700">{supply.supplier?.name}</strong> •{' '}
+              {tr('Призначення:', 'Destination:')}{' '}
               <strong className="text-slate-700">{supply.location?.name}</strong>
             </p>
           </div>
@@ -218,7 +229,7 @@ function SupplyDetailsModal({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer"
               >
                 <Edit3 className="w-3.5 h-3.5" />
-                Edit Pending Supply
+                {tr('Редагувати поставку', 'Edit Pending Supply')}
               </button>
             )}
             <button
@@ -234,25 +245,33 @@ function SupplyDetailsModal({
           {/* Summary Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
-              <div className="text-[11px] font-semibold uppercase text-slate-400">Total Units</div>
+              <div className="text-[11px] font-semibold uppercase text-slate-400">
+                {tr('Усього одиниць', 'Total Units')}
+              </div>
               <div className="text-lg font-bold text-slate-900 mt-0.5">
-                {supply.total_units_count} pcs ({supply.total_items_count} SKUs)
+                {supply.total_units_count} {tr('шт.', 'pcs')} ({supply.total_items_count} SKUs)
               </div>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
-              <div className="text-[11px] font-semibold uppercase text-slate-400">Total Supplier Cost</div>
+              <div className="text-[11px] font-semibold uppercase text-slate-400">
+                {tr('Закупівельна сума', 'Total Supplier Cost')}
+              </div>
               <div className="text-lg font-bold text-slate-900 mt-0.5">
                 ₴{supply.total_cost.toFixed(2)}
               </div>
             </div>
             <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200/60">
-              <div className="text-[11px] font-semibold uppercase text-blue-600">Retail Value Snapshot</div>
+              <div className="text-[11px] font-semibold uppercase text-blue-600">
+                {tr('Роздрібна оцінка', 'Retail Value Snapshot')}
+              </div>
               <div className="text-lg font-bold text-blue-900 mt-0.5">
                 ₴{supply.total_selling_value.toFixed(2)}
               </div>
             </div>
             <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200/60">
-              <div className="text-[11px] font-semibold uppercase text-emerald-600">Expected Margin</div>
+              <div className="text-[11px] font-semibold uppercase text-emerald-600">
+                {tr('Очікувана маржа', 'Expected Margin')}
+              </div>
               <div className="text-lg font-bold text-emerald-800 mt-0.5">
                 +₴{expectedProfit.toFixed(2)}
               </div>
@@ -263,7 +282,9 @@ function SupplyDetailsModal({
             <div className="p-3.5 bg-amber-50/50 border border-amber-200/60 rounded-xl text-xs text-slate-700 flex items-start gap-2">
               <FileText className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold text-slate-800">Supply Notes: </span>
+                <span className="font-semibold text-slate-800">
+                  {tr('Примітки до поставки: ', 'Supply Notes: ')}
+                </span>
                 {supply.notes}
               </div>
             </div>
@@ -272,10 +293,14 @@ function SupplyDetailsModal({
           {/* Status Controls */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
             <div>
-              <div className="text-xs font-bold text-slate-800">Supply Status & Stock Control</div>
+              <div className="text-xs font-bold text-slate-800">
+                {tr('Статус поставки та контроль залишків', 'Supply Status & Stock Control')}
+              </div>
               <p className="text-[11px] text-slate-500">
-                Stock is only counted at <strong>{supply.location?.name}</strong> while status is{' '}
-                <strong>Received</strong>.
+                {tr(
+                  `Залишки зараховуються на локацію "${supply.location?.name}" лише коли статус "Отримано".`,
+                  `Stock is only counted at "${supply.location?.name}" while status is "Received".`
+                )}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -285,13 +310,13 @@ function SupplyDetailsModal({
                   type="button"
                   disabled={isStatusUpdating || supply.status === st}
                   onClick={() => onStatusChange(supply.id, st)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer disabled:opacity-50 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 ${
                     supply.status === st
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  {st}
+                  {statusLabel(st)}
                 </button>
               ))}
             </div>
@@ -300,18 +325,18 @@ function SupplyDetailsModal({
           {/* Items Table */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-              Supplied Product Items & Price Snapshots
+              {tr('Позиції поставки та зафіксовані ціни', 'Supplied Product Items & Price Snapshots')}
             </h3>
             <div className="border border-slate-200 rounded-xl overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500">
-                    <th className="py-2.5 px-4">Product</th>
-                    <th className="py-2.5 px-3">SKU / Barcode</th>
-                    <th className="py-2.5 px-3 text-right">Qty</th>
-                    <th className="py-2.5 px-3 text-right">Cost Snapshot</th>
-                    <th className="py-2.5 px-3 text-right">Retail Snapshot</th>
-                    <th className="py-2.5 px-4 text-right">Line Cost</th>
+                    <th className="py-2.5 px-4">{tr('Товар', 'Product')}</th>
+                    <th className="py-2.5 px-3">{tr('SKU / Штрихкод', 'SKU / Barcode')}</th>
+                    <th className="py-2.5 px-3 text-right">{tr('К-сть', 'Qty')}</th>
+                    <th className="py-2.5 px-3 text-right">{tr('Закупівля', 'Cost Snapshot')}</th>
+                    <th className="py-2.5 px-3 text-right">{tr('Роздріб', 'Retail Snapshot')}</th>
+                    <th className="py-2.5 px-4 text-right">{tr('Сума закупівлі', 'Line Cost')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
@@ -319,7 +344,7 @@ function SupplyDetailsModal({
                     <tr key={item.id} className="hover:bg-slate-50/70">
                       <td className="py-3 px-4">
                         <div className="font-semibold text-slate-900">
-                          {item.product?.name || 'Unknown Product'}
+                          {item.product?.name || tr('Невідомий товар', 'Unknown Product')}
                         </div>
                         {item.product?.category_name && (
                           <div className="text-[11px] text-slate-400">{item.product.category_name}</div>
@@ -374,6 +399,7 @@ function SupplyWorkspace({
   onCancel: () => void
   onSaved: (msg: string) => void
 }) {
+  const { tr } = useI18n()
   const queryClient = useQueryClient()
   const isEditing = !!initialSupply
 
@@ -414,7 +440,7 @@ function SupplyWorkspace({
 
   const filteredCatalog = useMemo(() => {
     const q = productSearch.trim().toLowerCase()
-    if (!q) return catalogProducts.slice(0, 8)
+    if (!q) return []
     return catalogProducts
       .filter(
         (p) =>
@@ -547,14 +573,14 @@ function SupplyWorkspace({
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
       onSaved(
         isEditing
-          ? 'Supply and product details updated successfully!'
+          ? tr('Поставку та дані товарів успішно оновлено!', 'Supply and product details updated successfully!')
           : status === 'received'
-            ? 'Supply created and stock added to location!'
-            : 'Pending supply created and product price snapshots recorded!'
+            ? tr('Поставку створено та залишки додано на локацію!', 'Supply created and stock added to location!')
+            : tr('Очікуючу поставку створено та ціни зафіксовано!', 'Pending supply created and product price snapshots recorded!')
       )
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to save supply'
+      let msg = tr('Не вдалося зберегти поставку', 'Failed to save supply')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg =
           typeof err.response.data.errors === 'string'
@@ -570,21 +596,23 @@ function SupplyWorkspace({
     setErrorMsg(null)
 
     if (!supplierId) {
-      setErrorMsg('Please select a supplier.')
+      setErrorMsg(tr('Будь ласка, виберіть постачальника.', 'Please select a supplier.'))
       return
     }
     if (!locationId) {
-      setErrorMsg('Please select a destination store or warehouse.')
+      setErrorMsg(tr('Будь ласка, виберіть магазин або склад призначення.', 'Please select a destination store or warehouse.'))
       return
     }
     if (items.length === 0) {
-      setErrorMsg('Please add at least one new or existing product to the supply.')
+      setErrorMsg(
+        tr('Будь ласка, додайте принаймні один новий або існуючий товар до поставки.', 'Please add at least one new or existing product to the supply.')
+      )
       return
     }
 
     for (const item of items) {
       if (!item.name.trim() || !item.sku.trim()) {
-        setErrorMsg('Every product in the supply must have a Name and SKU.')
+        setErrorMsg(tr('Кожен товар у поставці повинен мати Назву та SKU.', 'Every product in the supply must have a Name and SKU.'))
         return
       }
     }
@@ -607,7 +635,7 @@ function SupplyWorkspace({
           {/* Product Name */}
           <div className="md:col-span-4">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-              Product Name *
+              {tr('Назва товару *', 'Product Name *')}
             </label>
             <input
               type="text"
@@ -637,21 +665,21 @@ function SupplyWorkspace({
           {/* Barcode + Generator + Scanner */}
           <div className="md:col-span-3">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-              Barcode (EAN-13 / Code128)
+              {tr('Штрихкод (EAN-13 / Code128)', 'Barcode (EAN-13 / Code128)')}
             </label>
             <div className="flex items-center gap-1">
               <input
                 type="text"
                 value={item.barcode}
                 onChange={(e) => updateItemField(item.key, 'barcode', e.target.value)}
-                placeholder="Scan or generate"
+                placeholder={tr('Скануйте або згенеруйте', 'Scan or generate')}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="button"
                 onClick={() => updateItemField(item.key, 'barcode', generateInternalEan13())}
                 className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl border border-slate-200 transition-colors cursor-pointer"
-                title="Generate Internal EAN-13 Barcode"
+                title={tr('Згенерувати внутрішній штрихкод EAN-13', 'Generate Internal EAN-13 Barcode')}
               >
                 <Sparkles className="w-3.5 h-3.5" />
               </button>
@@ -659,7 +687,7 @@ function SupplyWorkspace({
                 type="button"
                 onClick={() => setScannerTargetKey(item.key)}
                 className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl border border-slate-200 transition-colors cursor-pointer"
-                title="Scan Barcode with Camera"
+                title={tr('Сканувати штрихкод камерою', 'Scan Barcode with Camera')}
               >
                 <ScanBarcode className="w-3.5 h-3.5" />
               </button>
@@ -669,14 +697,14 @@ function SupplyWorkspace({
           {/* Category */}
           <div className="md:col-span-3">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-              Category
+              {tr('Категорія', 'Category')}
             </label>
             <select
               value={item.category_id}
               onChange={(e) => updateItemField(item.key, 'category_id', e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Uncategorized</option>
+              <option value="">{tr('Без категорії', 'Uncategorized')}</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
@@ -691,7 +719,7 @@ function SupplyWorkspace({
           <div className="flex flex-wrap items-center gap-3">
             <div className="w-32">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                Cost Price (₴) *
+                {tr('Закупівля (₴) *', 'Cost Price (₴) *')}
               </label>
               <input
                 type="number"
@@ -706,7 +734,7 @@ function SupplyWorkspace({
 
             <div className="w-36">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-1">
-                Selling Price (₴) *
+                {tr('Роздріб (₴) *', 'Selling Price (₴) *')}
               </label>
               <input
                 type="number"
@@ -721,7 +749,7 @@ function SupplyWorkspace({
 
             <div className="w-24">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                Quantity *
+                {tr('Кількість *', 'Quantity *')}
               </label>
               <input
                 type="number"
@@ -738,7 +766,7 @@ function SupplyWorkspace({
           <div className="flex items-center gap-4 ml-auto">
             <div className="text-right">
               <div className="text-[10px] text-slate-400 uppercase font-semibold">
-                Line Cost / Unit Margin
+                {tr('Сума закупівлі / Маржа', 'Line Cost / Unit Margin')}
               </div>
               <div className="text-xs font-bold text-slate-800">
                 ₴{(costNum * qtyNum).toFixed(2)}{' '}
@@ -747,7 +775,7 @@ function SupplyWorkspace({
                     unitMargin >= 0 ? 'text-emerald-600' : 'text-red-600'
                   }`}
                 >
-                  ({unitMargin >= 0 ? '+' : ''}₴{unitMargin.toFixed(2)}/unit)
+                  ({unitMargin >= 0 ? '+' : ''}₴{unitMargin.toFixed(2)}/{tr('од.', 'unit')})
                 </span>
               </div>
             </div>
@@ -756,7 +784,7 @@ function SupplyWorkspace({
               type="button"
               onClick={() => removeItem(item.key)}
               className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-              title="Remove Item from Supply"
+              title={tr('Прибрати товар із поставки', 'Remove Item from Supply')}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -779,10 +807,15 @@ function SupplyWorkspace({
           </button>
           <div>
             <h2 className="text-xl font-bold text-slate-900">
-              {isEditing ? 'Edit Pending Supply' : 'Create New Supply'}
+              {isEditing
+                ? tr('Редагувати поставку', 'Edit Pending Supply')
+                : tr('Створити нову поставку', 'Create New Supply')}
             </h2>
             <p className="text-xs text-slate-500">
-              Select destination store/warehouse, edit product details inline, and snapshot prices
+              {tr(
+                'Виберіть магазин/склад призначення, відредагуйте деталі товарів та зафіксуйте ціни',
+                'Select destination store/warehouse, edit product details inline, and snapshot prices'
+              )}
             </p>
           </div>
         </div>
@@ -793,7 +826,7 @@ function SupplyWorkspace({
             onClick={onCancel}
             className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
           >
-            Cancel
+            {tr('Скасувати', 'Cancel')}
           </button>
           <button
             type="submit"
@@ -801,12 +834,12 @@ function SupplyWorkspace({
             className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             {saveMutation.isPending
-              ? 'Saving Supply...'
+              ? tr('Збереження...', 'Saving Supply...')
               : isEditing
-                ? 'Save Supply Changes'
+                ? tr('Зберегти зміни', 'Save Supply Changes')
                 : status === 'received'
-                  ? 'Create & Receive into Stock'
-                  : 'Create Pending Supply'}
+                  ? tr('Створити та прийняти на склад', 'Create & Receive into Stock')
+                  : tr('Створити очікуючу поставку', 'Create Pending Supply')}
           </button>
         </div>
       </div>
@@ -822,7 +855,7 @@ function SupplyWorkspace({
       <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-            Supplier *
+            {tr('Постачальник *', 'Supplier *')}
           </label>
           <select
             value={supplierId}
@@ -831,7 +864,7 @@ function SupplyWorkspace({
             required
           >
             <option value="" disabled>
-              Select Supplier...
+              {tr('Виберіть постачальника...', 'Select Supplier...')}
             </option>
             {suppliers.map((s) => (
               <option key={s.id} value={s.id}>
@@ -843,7 +876,7 @@ function SupplyWorkspace({
 
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-            Destination Store / Warehouse *
+            {tr('Магазин / Склад призначення *', 'Destination Store / Warehouse *')}
           </label>
           <select
             value={locationId}
@@ -852,11 +885,11 @@ function SupplyWorkspace({
             required
           >
             <option value="" disabled>
-              Select Location...
+              {tr('Виберіть локацію...', 'Select Location...')}
             </option>
             {locations.map((loc) => (
               <option key={loc.id} value={loc.id}>
-                {loc.name} ({loc.location_type === 'warehouse' ? 'Warehouse' : 'Store'})
+                {loc.name} ({loc.location_type === 'warehouse' ? tr('Склад', 'Warehouse') : tr('Магазин', 'Store')})
               </option>
             ))}
           </select>
@@ -864,21 +897,25 @@ function SupplyWorkspace({
 
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-            Supply Status *
+            {tr('Статус поставки *', 'Supply Status *')}
           </label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as 'pending' | 'received')}
             className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
           >
-            <option value="pending">Pending (Do not add to stock yet)</option>
-            <option value="received">Received (Add to stock immediately)</option>
+            <option value="pending">
+              {tr('Очікує (Ще не додавати до залишків)', 'Pending (Do not add to stock yet)')}
+            </option>
+            <option value="received">
+              {tr('Отримано (Додати до залишків одразу)', 'Received (Add to stock immediately)')}
+            </option>
           </select>
         </div>
 
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-            Reference / Invoice #
+            {tr('Номер накладної / Документа', 'Reference / Invoice #')}
           </label>
           <input
             type="text"
@@ -891,13 +928,16 @@ function SupplyWorkspace({
 
         <div className="sm:col-span-2 lg:col-span-4">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-            Supply Notes (Optional)
+            {tr('Примітки до поставки (необов’язково)', 'Supply Notes (Optional)')}
           </label>
           <input
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Delivery comments, batch details, invoice notes..."
+            placeholder={tr(
+              'Коментарі до доставки, деталі партії, нотатки до накладної...',
+              'Delivery comments, batch details, invoice notes...'
+            )}
             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -908,7 +948,10 @@ function SupplyWorkspace({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-              Search & Add Existing Product from Catalog
+              {tr(
+                'Пошук та додавання існуючого товару з каталогу',
+                'Search & Add Existing Product from Catalog'
+              )}
             </label>
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
@@ -917,7 +960,10 @@ function SupplyWorkspace({
                   type="text"
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="Search existing products by name, SKU, or barcode..."
+                  placeholder={tr(
+                    'Пошук існуючих товарів за назвою, SKU або штрихкодом...',
+                    'Search existing products by name, SKU, or barcode...'
+                  )}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -927,7 +973,7 @@ function SupplyWorkspace({
                 className="px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
               >
                 <ScanBarcode className="w-4 h-4 text-blue-600" />
-                <span>Scan</span>
+                <span>{tr('Сканувати', 'Scan')}</span>
               </button>
             </div>
           </div>
@@ -939,43 +985,54 @@ function SupplyWorkspace({
               className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              Add New Product Row
+              {tr('Додати новий товар', 'Add New Product Row')}
             </button>
           </div>
         </div>
 
-        {/* Quick Catalog Picker Results */}
-        <div className="pt-2">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase mb-2">
-            {productSearch.trim() ? 'Matching Catalog Products (Click to add)' : 'Quick Add Existing Products'}
+        {/* Matching Catalog Picker Results (only when searching) */}
+        {productSearch.trim() && (
+          <div className="pt-2">
+            <div className="text-[11px] font-semibold text-slate-400 uppercase mb-2">
+              {tr('Знайдені товари в каталозі (Натисніть, щоб додати)', 'Matching Catalog Products (Click to add)')}
+            </div>
+            {filteredCatalog.length === 0 ? (
+              <div className="text-xs text-slate-500 py-2">
+                {tr(
+                  `Існуючих товарів за запитом "${productSearch.trim()}" не знайдено.`,
+                  `No existing products match "${productSearch.trim()}".`
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {filteredCatalog.map((prod) => {
+                  const isAdded = existingItems.some((i) => i.product_id === prod.id)
+                  return (
+                    <button
+                      key={prod.id}
+                      type="button"
+                      onClick={() => addExistingProduct(prod)}
+                      className={`text-left px-3 py-2 rounded-xl border text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                        isAdded
+                          ? 'border-blue-300 bg-blue-50/70 text-blue-900'
+                          : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100 text-slate-800'
+                      }`}
+                    >
+                      <Package className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                      <div>
+                        <div className="font-semibold line-clamp-1">{prod.name}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">
+                          {prod.sku} • {tr('Роздріб:', 'Retail:')} ₴{prod.price.toFixed(2)}
+                        </div>
+                      </div>
+                      <Plus className="w-3.5 h-3.5 text-slate-400 ml-1" />
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {filteredCatalog.map((prod) => {
-              const isAdded = existingItems.some((i) => i.product_id === prod.id)
-              return (
-                <button
-                  key={prod.id}
-                  type="button"
-                  onClick={() => addExistingProduct(prod)}
-                  className={`text-left px-3 py-2 rounded-xl border text-xs transition-all flex items-center gap-2 cursor-pointer ${
-                    isAdded
-                      ? 'border-blue-300 bg-blue-50/70 text-blue-900'
-                      : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100 text-slate-800'
-                  }`}
-                >
-                  <Package className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                  <div>
-                    <div className="font-semibold line-clamp-1">{prod.name}</div>
-                    <div className="text-[10px] text-slate-500 font-mono">
-                      {prod.sku} • Retail: ₴{prod.price.toFixed(2)}
-                    </div>
-                  </div>
-                  <Plus className="w-3.5 h-3.5 text-slate-400 ml-1" />
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Separated Section 1: New Products */}
@@ -987,10 +1044,13 @@ function SupplyWorkspace({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">
-                New Products to Create ({newItems.length})
+                {tr('Нові товари для створення', 'New Products to Create')} ({newItems.length})
               </h3>
               <p className="text-xs text-slate-500">
-                These products will be automatically registered in your catalog when this supply is saved
+                {tr(
+                  'Ці товари будуть автоматично зареєстровані у вашому каталозі під час збереження поставки',
+                  'These products will be automatically registered in your catalog when this supply is saved'
+                )}
               </p>
             </div>
           </div>
@@ -1001,13 +1061,16 @@ function SupplyWorkspace({
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            Add New Product
+            {tr('Додати новий товар', 'Add New Product')}
           </button>
         </div>
 
         {newItems.length === 0 ? (
           <div className="text-center py-8 bg-white/80 border border-dashed border-indigo-200 rounded-xl text-xs text-slate-500">
-            No new products in this supply yet. Click <strong>"Add New Product"</strong> above if you are receiving brand-new catalog items.
+            {tr(
+              'У цій поставці ще немає нових товарів. Натисніть "Додати новий товар" вище, якщо ви отримуєте нові позиції.',
+              'No new products in this supply yet. Click "Add New Product" above if you are receiving brand-new catalog items.'
+            )}
           </div>
         ) : (
           <div className="space-y-3">{newItems.map((item) => renderEditableProductRow(item))}</div>
@@ -1023,10 +1086,13 @@ function SupplyWorkspace({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">
-                Existing Catalog Products ({existingItems.length})
+                {tr('Існуючі товари з каталогу', 'Existing Catalog Products')} ({existingItems.length})
               </h3>
               <p className="text-xs text-slate-500">
-                You can edit SKU, barcode, name, or selling price directly below — changes update the product catalog and snapshot this supply's price
+                {tr(
+                  'Ви можете редагувати SKU, штрихкод, назву або роздрібну ціну нижче — зміни оновлять каталог і зафіксують ціну поставки',
+                  "You can edit SKU, barcode, name, or selling price directly below — changes update the product catalog and snapshot this supply's price"
+                )}
               </p>
             </div>
           </div>
@@ -1034,7 +1100,10 @@ function SupplyWorkspace({
 
         {existingItems.length === 0 ? (
           <div className="text-center py-8 bg-white border border-dashed border-slate-300 rounded-xl text-xs text-slate-500">
-            No existing products selected. Search or click any product in the catalog bar above to add it.
+            {tr(
+              'Існуючі товари не вибрано. Знайдіть або відскануйте товар у рядку пошуку вище.',
+              'No existing products selected. Search or click any product in the catalog bar above to add it.'
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -1048,15 +1117,15 @@ function SupplyWorkspace({
         <div className="flex flex-wrap items-center gap-6">
           <div>
             <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-              Total Items / Units
+              {tr('Позиції / Одиниці', 'Total Items / Units')}
             </div>
             <div className="text-lg font-bold">
-              {items.length} SKUs ({summary.totalUnits} units)
+              {items.length} SKUs ({summary.totalUnits} {tr('шт.', 'units')})
             </div>
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-              Total Supplier Cost
+              {tr('Сума закупівлі', 'Total Supplier Cost')}
             </div>
             <div className="text-lg font-bold text-amber-300">
               ₴{summary.totalCost.toFixed(2)}
@@ -1064,7 +1133,7 @@ function SupplyWorkspace({
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-              Total Retail Value
+              {tr('Роздрібна вартість', 'Total Retail Value')}
             </div>
             <div className="text-lg font-bold text-blue-300">
               ₴{summary.totalRetail.toFixed(2)}
@@ -1072,7 +1141,7 @@ function SupplyWorkspace({
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-              Expected Profit Margin
+              {tr('Очікуваний прибуток', 'Expected Profit Margin')}
             </div>
             <div className="text-lg font-bold text-emerald-400">
               +₴{summary.margin.toFixed(2)}
@@ -1086,12 +1155,12 @@ function SupplyWorkspace({
           className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
         >
           {saveMutation.isPending
-            ? 'Saving...'
+            ? tr('Збереження...', 'Saving...')
             : isEditing
-              ? 'Save Supply Changes'
+              ? tr('Зберегти зміни', 'Save Supply Changes')
               : status === 'received'
-                ? 'Confirm & Receive Supply'
-                : 'Save Pending Supply'}
+                ? tr('Підтвердити та прийняти поставку', 'Confirm & Receive Supply')
+                : tr('Зберегти очікуючу поставку', 'Save Pending Supply')}
         </button>
       </div>
 
@@ -1123,6 +1192,7 @@ function SupplyWorkspace({
    ========================================================================= */
 
 function SuppliesPage() {
+  const { tr } = useI18n()
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
   const searchParams = Route.useSearch()
@@ -1209,11 +1279,16 @@ function SuppliesPage() {
         setViewingSupply(updatedSupply)
       }
       setStatusError(null)
-      setSuccessMsg(`Supply status updated to "${updatedSupply.status.toUpperCase()}".`)
+      setSuccessMsg(
+        tr(
+          `Статус поставки оновлено на "${updatedSupply.status.toUpperCase()}".`,
+          `Supply status updated to "${updatedSupply.status.toUpperCase()}".`
+        )
+      )
       setTimeout(() => setSuccessMsg(null), 3500)
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to change supply status.'
+      let msg = tr('Не вдалося змінити статус поставки.', 'Failed to change supply status.')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg =
           typeof err.response.data.errors === 'string'
@@ -1230,15 +1305,20 @@ function SuppliesPage() {
         <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200/80 inline-block text-amber-600 mb-4">
           <ShieldAlert className="w-10 h-10 mx-auto" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2">Access Restricted</h2>
+        <h2 className="text-xl font-bold text-slate-900 mb-2">
+          {tr('Доступ обмежено', 'Access Restricted')}
+        </h2>
         <p className="text-sm text-slate-500 mb-6">
-          Supplies management is reserved for Stockkeepers and Administrators.
+          {tr(
+            'Управління поставками доступне лише комірникам та адміністраторам.',
+            'Supplies management is reserved for Stockkeepers and Administrators.'
+          )}
         </p>
         <Link
           to="/products"
           className="px-5 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-xl shadow-xs hover:bg-blue-700 transition-colors inline-block"
         >
-          Return to Products Catalog
+          {tr('Повернутися до каталогу товарів', 'Return to Products Catalog')}
         </Link>
       </div>
     )
@@ -1273,9 +1353,14 @@ function SuppliesPage() {
                 <Truck className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Supplies & Shipments</h1>
+                <h1 className="text-2xl font-bold text-slate-900">
+                  {tr('Поставки та Надходження', 'Supplies & Shipments')}
+                </h1>
                 <p className="text-xs text-slate-500">
-                  Receive inventory into stores, manage pending shipments, and track product price history
+                  {tr(
+                    'Приймайте товари у магазини та склади, керуйте очікуючими поставками та відстежуйте історію цін',
+                    'Receive inventory into stores, manage pending shipments, and track product price history'
+                  )}
                 </p>
               </div>
             </div>
@@ -1286,7 +1371,7 @@ function SuppliesPage() {
                 search={{ tab: 'suppliers' }}
                 className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors"
               >
-                Manage Suppliers
+                {tr('Керувати постачальниками', 'Manage Suppliers')}
               </Link>
               <button
                 type="button"
@@ -1297,7 +1382,7 @@ function SuppliesPage() {
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                New Supply
+                {tr('Нова поставка', 'New Supply')}
               </button>
             </div>
           </div>
@@ -1336,7 +1421,10 @@ function SuppliesPage() {
                     search: (prev) => ({ ...prev, query: e.target.value || undefined }),
                   })
                 }
-                placeholder="Search reference, supplier, notes..."
+                placeholder={tr(
+                  'Пошук за номером, постачальником, примітками...',
+                  'Search reference, supplier, notes...'
+                )}
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -1350,7 +1438,7 @@ function SuppliesPage() {
               }
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Suppliers</option>
+              <option value="">{tr('Усі постачальники', 'All Suppliers')}</option>
               {suppliers.map((sup) => (
                 <option key={sup.id} value={sup.id}>
                   {sup.name}
@@ -1367,7 +1455,7 @@ function SuppliesPage() {
               }
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Destination Locations</option>
+              <option value="">{tr('Усі локації призначення', 'All Destination Locations')}</option>
               {locations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
                   {loc.name}
@@ -1384,26 +1472,33 @@ function SuppliesPage() {
               }
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="received">Received (In Stock)</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="">{tr('Усі статуси', 'All Statuses')}</option>
+              <option value="pending">{tr('Очікує', 'Pending')}</option>
+              <option value="received">{tr('Отримано (На складі)', 'Received (In Stock)')}</option>
+              <option value="cancelled">{tr('Скасовано', 'Cancelled')}</option>
             </select>
           </div>
 
           {/* Supplies List */}
           {isLoading ? (
-            <div className="text-center py-16 text-slate-400 text-sm">Loading supplies...</div>
+            <div className="text-center py-16 text-slate-400 text-sm">
+              {tr('Завантаження поставок...', 'Loading supplies...')}
+            </div>
           ) : error ? (
             <div className="p-4 bg-red-50 text-red-700 rounded-xl text-xs">
-              Failed to load supplies list.
+              {tr('Не вдалося завантажити список поставок.', 'Failed to load supplies list.')}
             </div>
           ) : supplies.length === 0 ? (
             <div className="text-center py-16 bg-white border border-dashed border-slate-300 rounded-2xl">
               <Truck className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <h3 className="font-semibold text-slate-700 text-sm">No supplies found</h3>
+              <h3 className="font-semibold text-slate-700 text-sm">
+                {tr('Поставок не знайдено', 'No supplies found')}
+              </h3>
               <p className="text-xs text-slate-500 mt-1 mb-4">
-                Create a new supply to receive inventory or register incoming shipments.
+                {tr(
+                  'Створіть нову поставку для прийому товарів або реєстрації вхідних партій.',
+                  'Create a new supply to receive inventory or register incoming shipments.'
+                )}
               </p>
               <button
                 type="button"
@@ -1411,7 +1506,7 @@ function SuppliesPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl shadow-xs hover:bg-blue-700 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                Create First Supply
+                {tr('Створити першу поставку', 'Create First Supply')}
               </button>
             </div>
           ) : (
@@ -1429,7 +1524,7 @@ function SuppliesPage() {
                         </span>
                         <StatusBadge status={supply.status} />
                         <span className="text-xs text-slate-400">
-                          Created{' '}
+                          {tr('Створено', 'Created')}{' '}
                           {new Date(supply.created_at).toLocaleDateString('nl-NL', {
                             day: '2-digit',
                             month: '2-digit',
@@ -1438,7 +1533,7 @@ function SuppliesPage() {
                         </span>
                         {supply.received_at && (
                           <span className="text-xs text-emerald-600 font-medium">
-                            • Received{' '}
+                            • {tr('Отримано', 'Received')}{' '}
                             {new Date(supply.received_at).toLocaleDateString('nl-NL', {
                               day: '2-digit',
                               month: '2-digit',
@@ -1451,15 +1546,15 @@ function SuppliesPage() {
                       <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600">
                         <span className="flex items-center gap-1.5 font-medium text-slate-800">
                           <Truck className="w-3.5 h-3.5 text-indigo-600" />
-                          {supply.supplier?.name || 'Unknown Supplier'}
+                          {supply.supplier?.name || tr('Невідомий постачальник', 'Unknown Supplier')}
                         </span>
                         <span className="flex items-center gap-1.5">
                           <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                          {supply.location?.name || 'Unknown Location'}
+                          {supply.location?.name || tr('Невідома локація', 'Unknown Location')}
                         </span>
                         <span className="flex items-center gap-1.5">
                           <Package className="w-3.5 h-3.5 text-blue-600" />
-                          {supply.total_items_count} SKUs ({supply.total_units_count} units)
+                          {supply.total_items_count} SKUs ({supply.total_units_count} {tr('шт.', 'units')})
                         </span>
                       </div>
 
@@ -1472,7 +1567,7 @@ function SuppliesPage() {
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <div className="text-[10px] uppercase font-semibold text-slate-400">
-                            Total Cost
+                            {tr('Сума закупівлі', 'Total Cost')}
                           </div>
                           <div className="text-sm font-bold text-slate-900">
                             ₴{supply.total_cost.toFixed(2)}
@@ -1481,7 +1576,7 @@ function SuppliesPage() {
                         <div className="text-right">
                           <div className="text-[10px] uppercase font-semibold text-blue-500 flex items-center justify-end gap-1">
                             <TrendingUp className="w-3 h-3" />
-                            Retail Value
+                            {tr('Роздрібна сума', 'Retail Value')}
                           </div>
                           <div className="text-sm font-bold text-blue-700">
                             ₴{supply.total_selling_value.toFixed(2)}
@@ -1501,11 +1596,11 @@ function SuppliesPage() {
                             })
                           }
                           className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold bg-slate-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                          title="Change Supply Status"
+                          title={tr('Змінити статус поставки', 'Change Supply Status')}
                         >
-                          <option value="pending">Status: Pending</option>
-                          <option value="received">Status: Received</option>
-                          <option value="cancelled">Status: Cancelled</option>
+                          <option value="pending">{tr('Статус: Очікує', 'Status: Pending')}</option>
+                          <option value="received">{tr('Статус: Отримано', 'Status: Received')}</option>
+                          <option value="cancelled">{tr('Статус: Скасовано', 'Status: Cancelled')}</option>
                         </select>
 
                         {supply.status === 'pending' && (
@@ -1516,7 +1611,7 @@ function SuppliesPage() {
                               setMode('edit')
                             }}
                             className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl border border-slate-200 transition-colors cursor-pointer"
-                            title="Edit Pending Supply"
+                            title={tr('Редагувати поставку', 'Edit Pending Supply')}
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
@@ -1528,7 +1623,7 @@ function SuppliesPage() {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          Details
+                          {tr('Деталі', 'Details')}
                         </button>
                       </div>
                     </div>

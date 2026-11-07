@@ -2,7 +2,19 @@ import { createRootRoute, Link, Outlet, useNavigate } from '@tanstack/react-rout
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
-import { Package, LogIn, LogOut, LayoutDashboard, Receipt, Settings2, ShoppingCart, Truck } from 'lucide-react'
+import { useI18n } from '../i18n/i18n'
+import {
+  Package,
+  LogIn,
+  LogOut,
+  LayoutDashboard,
+  Receipt,
+  Settings2,
+  ShoppingCart,
+  Truck,
+  ArrowLeftRight,
+  Globe,
+} from 'lucide-react'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -15,6 +27,7 @@ function RootComponent() {
   const cartItems = useCartStore((state) => state.items)
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
   const navigate = useNavigate()
+  const { locale, setLocale, tr, tRole } = useI18n()
 
   const isCashier = user?.role === 'cashier'
 
@@ -44,7 +57,7 @@ function RootComponent() {
                     className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
                   >
                     <LayoutDashboard className="w-4 h-4" />
-                    Dashboard
+                    {tr('Панель', 'Dashboard')}
                   </Link>
                 )}
                 <Link
@@ -52,14 +65,14 @@ function RootComponent() {
                   className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
                 >
                   <Package className="w-4 h-4" />
-                  Products
+                  {tr('Товари', 'Products')}
                 </Link>
                 <Link
                   to="/sales"
                   className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
                 >
                   <Receipt className="w-4 h-4" />
-                  Sales
+                  {tr('Продажі', 'Sales')}
                 </Link>
                 {!isCashier && (
                   <Link
@@ -67,7 +80,16 @@ function RootComponent() {
                     className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
                   >
                     <Truck className="w-4 h-4" />
-                    Supplies
+                    {tr('Поставки', 'Supplies')}
+                  </Link>
+                )}
+                {!isCashier && (
+                  <Link
+                    to="/movements"
+                    className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
+                  >
+                    <ArrowLeftRight className="w-4 h-4" />
+                    {tr('Переміщення', 'Movements')}
                   </Link>
                 )}
                 {!isCashier && (
@@ -76,7 +98,7 @@ function RootComponent() {
                     className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
                   >
                     <Settings2 className="w-4 h-4" />
-                    Management
+                    {tr('Управління', 'Management')}
                   </Link>
                 )}
               </nav>
@@ -84,6 +106,36 @@ function RootComponent() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Compact Language Switcher (UA / EN) */}
+            <div
+              className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80"
+              title={tr('Змінити мову інтерфейсу', 'Switch interface language')}
+            >
+              <Globe className="w-3.5 h-3.5 text-slate-400 ml-2 mr-1 hidden sm:block" />
+              <button
+                type="button"
+                onClick={() => setLocale('uk')}
+                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                  locale === 'uk'
+                    ? 'bg-white text-blue-600 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                UA
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocale('en')}
+                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                  locale === 'en'
+                    ? 'bg-white text-blue-600 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                EN
+              </button>
+            </div>
+
             {token ? (
               <div className="flex items-center gap-3">
                 {cartCount > 0 && (
@@ -91,7 +143,7 @@ function RootComponent() {
                     to="/sales"
                     search={{ openCheckout: true }}
                     className="relative p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer"
-                    title={`Sales Cart (${cartCount} items)`}
+                    title={tr(`Кошик продажів (${cartCount} шт.)`, `Sales Cart (${cartCount} items)`)}
                   >
                     <ShoppingCart className="w-4 h-4" />
                     <span className="absolute -top-1 -right-1 bg-blue-600 text-white rounded-full text-[10px] font-bold w-4 h-4 flex items-center justify-center">
@@ -101,15 +153,15 @@ function RootComponent() {
                 )}
                 <div className="hidden md:flex flex-col text-right">
                   <span className="text-xs font-semibold text-slate-900">{user?.email}</span>
-                  <span className="text-[10px] uppercase font-bold text-blue-600">{user?.role}</span>
+                  <span className="text-[10px] uppercase font-bold text-blue-600">{tRole(user?.role)}</span>
                 </div>
                 <button
                   onClick={handleLogout}
                   className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
-                  title="Logout"
+                  title={tr('Вийти', 'Logout')}
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  Logout
+                  {tr('Вийти', 'Logout')}
                 </button>
               </div>
             ) : (
@@ -118,7 +170,7 @@ function RootComponent() {
                 className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                Sign In
+                {tr('Увійти', 'Sign In')}
               </Link>
             )}
           </div>

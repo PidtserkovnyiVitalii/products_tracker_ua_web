@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react'
 import axios from 'axios'
 import { api } from '../api/api'
 import { useAuthStore } from '../store/authStore'
+import { useI18n } from '../i18n/i18n'
 import {
   Package,
   Plus,
@@ -107,6 +108,7 @@ function PriceHistoryModal({
   product: ProductRecord
   onClose: () => void
 }) {
+  const { tr } = useI18n()
   const history = product.price_history || []
   const latestSnapshot = history[0]
 
@@ -126,10 +128,11 @@ function PriceHistoryModal({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">
-                Supply Price History — {product.name}
+                {tr('Історія цін поставок', 'Supply Price History')} — {product.name}
               </h3>
               <p className="text-xs text-slate-500 font-mono">
-                {product.sku} • Current Retail Price: ₴{product.price.toFixed(2)}
+                {product.sku} • {tr('Поточна роздрібна ціна:', 'Current Retail Price:')} ₴
+                {product.price.toFixed(2)}
               </p>
             </div>
           </div>
@@ -145,7 +148,7 @@ function PriceHistoryModal({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
               <div className="text-[10px] font-bold uppercase text-slate-400">
-                Current Selling Price
+                {tr('Поточна ціна продажу', 'Current Selling Price')}
               </div>
               <div className="text-lg font-bold text-slate-900 mt-0.5">
                 ₴{product.price.toFixed(2)}
@@ -153,7 +156,7 @@ function PriceHistoryModal({
             </div>
             <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/70">
               <div className="text-[10px] font-bold uppercase text-amber-700">
-                Latest Supplier Cost
+                {tr('Остання закупівельна ціна', 'Latest Supplier Cost')}
               </div>
               <div className="text-lg font-bold text-amber-900 mt-0.5">
                 {latestSnapshot ? `₴${latestSnapshot.cost_price.toFixed(2)}` : '—'}
@@ -161,7 +164,7 @@ function PriceHistoryModal({
             </div>
             <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200/70">
               <div className="text-[10px] font-bold uppercase text-emerald-700">
-                Latest Unit Margin
+                {tr('Остання маржа на одиниці', 'Latest Unit Margin')}
               </div>
               <div className="text-lg font-bold text-emerald-900 mt-0.5">
                 {latestSnapshot
@@ -173,19 +176,22 @@ function PriceHistoryModal({
 
           {history.length === 0 ? (
             <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs text-slate-500">
-              No supply price snapshots recorded for this product yet.
+              {tr(
+                'Для цього товару ще немає записів про ціни в поставках.',
+                'No supply price snapshots recorded for this product yet.'
+              )}
             </div>
           ) : (
             <div className="border border-slate-200 rounded-xl overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500">
-                    <th className="py-2.5 px-4">Supply / Date</th>
-                    <th className="py-2.5 px-3">Supplier & Store</th>
-                    <th className="py-2.5 px-3">Status</th>
-                    <th className="py-2.5 px-3 text-right">Qty</th>
-                    <th className="py-2.5 px-3 text-right">Cost Price</th>
-                    <th className="py-2.5 px-4 text-right">Selling Price</th>
+                    <th className="py-2.5 px-4">{tr('Поставка / Дата', 'Supply / Date')}</th>
+                    <th className="py-2.5 px-3">{tr('Постачальник і локація', 'Supplier & Store')}</th>
+                    <th className="py-2.5 px-3">{tr('Статус', 'Status')}</th>
+                    <th className="py-2.5 px-3 text-right">{tr('К-сть', 'Qty')}</th>
+                    <th className="py-2.5 px-3 text-right">{tr('Закупівля', 'Cost Price')}</th>
+                    <th className="py-2.5 px-4 text-right">{tr('Роздріб', 'Selling Price')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
@@ -205,7 +211,7 @@ function PriceHistoryModal({
                       </td>
                       <td className="py-3 px-3">
                         <div className="font-medium text-slate-800">
-                          {snap.supplier_name || 'Unknown Supplier'}
+                          {snap.supplier_name || tr('Невідомий постачальник', 'Unknown Supplier')}
                         </div>
                         <div className="text-[11px] text-slate-400">{snap.location_name}</div>
                       </td>
@@ -219,7 +225,11 @@ function PriceHistoryModal({
                                 : 'bg-amber-50 text-amber-700'
                           }`}
                         >
-                          {snap.supply_status || 'pending'}
+                          {snap.supply_status === 'received'
+                            ? tr('Отримано', 'received')
+                            : snap.supply_status === 'cancelled'
+                              ? tr('Скасовано', 'cancelled')
+                              : tr('Очікує', 'pending')}
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right font-semibold text-slate-700">
@@ -265,6 +275,7 @@ function ProductModal({
   isPending: boolean
   errorMsg: string | null
 }) {
+  const { tr } = useI18n()
   const [name, setName] = useState(product?.name || '')
   const [sku, setSku] = useState(product?.sku || '')
   const [price, setPrice] = useState(product?.price != null ? String(product.price) : '0.00')
@@ -311,10 +322,12 @@ function ProductModal({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-bold text-slate-900">
-              {product ? 'Edit Product' : 'New Product'}
+              {product ? tr('Редагувати товар', 'Edit Product') : tr('Новий товар', 'New Product')}
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              {product ? 'Update product details in catalog' : 'Register a new item in the catalog'}
+              {product
+                ? tr('Оновіть дані товару в каталозі', 'Update product details in catalog')
+                : tr('Зареєструйте нову позицію в каталозі', 'Register a new item in the catalog')}
             </p>
           </div>
           <button
@@ -335,7 +348,7 @@ function ProductModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Product Name *
+              {tr('Назва товару *', 'Product Name *')}
             </label>
             <input
               ref={inputRef}
@@ -350,7 +363,7 @@ function ProductModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                SKU (Unique Code) *
+                {tr('SKU (Унікальний код) *', 'SKU (Unique Code) *')}
               </label>
               <input
                 type="text"
@@ -363,7 +376,7 @@ function ProductModal({
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                Retail Price (₴) *
+                {tr('Роздрібна ціна (₴) *', 'Retail Price (₴) *')}
               </label>
               <input
                 type="number"
@@ -380,7 +393,7 @@ function ProductModal({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
-                Barcode (EAN/UPC)
+                {tr('Штрихкод (EAN/UPC)', 'Barcode (EAN/UPC)')}
               </label>
               <button
                 type="button"
@@ -388,7 +401,7 @@ function ProductModal({
                 className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer"
               >
                 <ScanBarcode className="w-3.5 h-3.5" />
-                <span>Scan</span>
+                <span>{tr('Сканувати', 'Scan')}</span>
               </button>
             </div>
             <div className="relative">
@@ -403,7 +416,7 @@ function ProductModal({
                 type="button"
                 onClick={() => setIsScannerOpen(true)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                title="Scan barcode with camera"
+                title={tr('Сканувати штрихкод камерою', 'Scan barcode with camera')}
               >
                 <ScanBarcode className="w-4 h-4" />
               </button>
@@ -412,14 +425,14 @@ function ProductModal({
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Category
+              {tr('Категорія', 'Category')}
             </label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
             >
-              <option value="">-- No Category --</option>
+              <option value="">{tr('-- Без категорії --', '-- No Category --')}</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -430,13 +443,13 @@ function ProductModal({
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Description
+              {tr('Опис', 'Description')}
             </label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Product description and details..."
+              placeholder={tr('Опис та характеристики товару...', 'Product description and details...')}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
             />
           </div>
@@ -448,14 +461,18 @@ function ProductModal({
               disabled={isPending}
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Скасувати', 'Cancel')}
             </button>
             <button
               type="submit"
               disabled={isPending || !name.trim() || !sku.trim()}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
             >
-              {isPending ? 'Saving...' : product ? 'Save Changes' : 'Create Product'}
+              {isPending
+                ? tr('Збереження...', 'Saving...')
+                : product
+                  ? tr('Зберегти зміни', 'Save Changes')
+                  : tr('Створити товар', 'Create Product')}
             </button>
           </div>
         </form>
@@ -464,7 +481,7 @@ function ProductModal({
           isOpen={isScannerOpen}
           onClose={() => setIsScannerOpen(false)}
           onScan={(scanned) => setBarcode(scanned)}
-          title="Scan Product Barcode"
+          title={tr('Сканувати штрихкод товару', 'Scan Product Barcode')}
         />
       </div>
     </div>
@@ -486,6 +503,7 @@ function AdjustStockModal({
   isPending: boolean
   errorMsg: string | null
 }) {
+  const { tr } = useI18n()
   const [locationId, setLocationId] = useState(locations[0]?.id || '')
   const [quantity, setQuantity] = useState<number>(() => {
     const existing = product.stocks.find((s) => s.location_id === locations[0]?.id)
@@ -523,7 +541,9 @@ function AdjustStockModal({
       >
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-bold text-slate-900">Adjust Stock</h3>
+            <h3 className="text-lg font-bold text-slate-900">
+              {tr('Коригувати залишок', 'Adjust Stock')}
+            </h3>
             <p className="text-xs text-slate-500 mt-0.5 truncate max-w-xs">{product.name}</p>
           </div>
           <button
@@ -544,7 +564,7 @@ function AdjustStockModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Select Store or Warehouse
+              {tr('Виберіть магазин або склад', 'Select Store or Warehouse')}
             </label>
             <select
               value={locationId}
@@ -555,7 +575,7 @@ function AdjustStockModal({
                 const stock = product.stocks.find((s) => s.location_id === loc.id)
                 return (
                   <option key={loc.id} value={loc.id}>
-                    {loc.name} (Current: {stock ? stock.quantity : 0})
+                    {loc.name} ({tr('Зараз:', 'Current:')} {stock ? stock.quantity : 0})
                   </option>
                 )
               })}
@@ -564,7 +584,7 @@ function AdjustStockModal({
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              New Inventory Quantity
+              {tr('Нова кількість на складі', 'New Inventory Quantity')}
             </label>
             <div className="flex items-center gap-2">
               <button
@@ -598,14 +618,14 @@ function AdjustStockModal({
               disabled={isPending}
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Скасувати', 'Cancel')}
             </button>
             <button
               type="submit"
               disabled={isPending}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
             >
-              {isPending ? 'Updating...' : 'Set Stock'}
+              {isPending ? tr('Оновлення...', 'Updating...') : tr('Встановити залишок', 'Set Stock')}
             </button>
           </div>
         </form>
@@ -615,6 +635,7 @@ function AdjustStockModal({
 }
 
 function ProductsPage() {
+  const { tr } = useI18n()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
@@ -797,11 +818,15 @@ function ProductsPage() {
       setIsProductModalOpen(false)
       setEditingProduct(null)
       setModalError(null)
-      setSuccessMsg(editingProduct ? 'Product updated successfully!' : 'Product created successfully!')
+      setSuccessMsg(
+        editingProduct
+          ? tr('Товар успішно оновлено!', 'Product updated successfully!')
+          : tr('Товар успішно створено!', 'Product created successfully!')
+      )
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to save product'
+      let msg = tr('Не вдалося зберегти товар', 'Failed to save product')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg = typeof err.response.data.errors === 'string'
           ? err.response.data.errors
@@ -825,11 +850,11 @@ function ProductsPage() {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setStockAdjustProduct(null)
       setModalError(null)
-      setSuccessMsg('Stock updated successfully!')
+      setSuccessMsg(tr('Залишок успішно оновлено!', 'Stock updated successfully!'))
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to adjust stock'
+      let msg = tr('Не вдалося скоригувати залишок', 'Failed to adjust stock')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg = typeof err.response.data.errors === 'string'
           ? err.response.data.errors
@@ -846,11 +871,11 @@ function ProductsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
-      setSuccessMsg('Product archived.')
+      setSuccessMsg(tr('Товар переміщено в архів.', 'Product archived.'))
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to delete product'
+      let msg = tr('Не вдалося видалити товар', 'Failed to delete product')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg = typeof err.response.data.errors === 'string'
           ? err.response.data.errors
@@ -864,13 +889,17 @@ function ProductsPage() {
     return (
       <div className="max-w-md mx-auto my-12 p-8 bg-white border border-slate-200 rounded-2xl shadow-sm text-center">
         <ShieldAlert className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-slate-800">Authentication Required</h2>
-        <p className="text-sm text-slate-500 mt-2 mb-6">You must sign in to view products and inventory.</p>
+        <h2 className="text-xl font-bold text-slate-800">
+          {tr('Потрібна авторизація', 'Authentication Required')}
+        </h2>
+        <p className="text-sm text-slate-500 mt-2 mb-6">
+          {tr('Увійдіть у систему, щоб переглядати товари та залишки.', 'You must sign in to view products and inventory.')}
+        </p>
         <Link
           to="/login"
           className="inline-flex py-2.5 px-5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl text-sm"
         >
-          Sign In Now
+          {tr('Увійти зараз', 'Sign In Now')}
         </Link>
       </div>
     )
@@ -883,8 +912,12 @@ function ProductsPage() {
         <div className="flex items-center gap-3">
           <Package className="w-7 h-7 text-blue-600" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Products & Inventory</h1>
-            <p className="text-sm text-slate-500">Catalog items and real-time stock across locations</p>
+            <h1 className="text-2xl font-bold text-slate-900">
+              {tr('Товари та Залишки', 'Products & Inventory')}
+            </h1>
+            <p className="text-sm text-slate-500">
+              {tr('Каталог товарів і актуальні залишки по локаціях', 'Catalog items and real-time stock across locations')}
+            </p>
           </div>
         </div>
 
@@ -898,7 +931,7 @@ function ProductsPage() {
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            New Product
+            {tr('Новий товар', 'New Product')}
           </button>
         )}
       </div>
@@ -919,7 +952,7 @@ function ProductsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, SKU, or barcode..."
+              placeholder={tr('Пошук за назвою, SKU або штрихкодом...', 'Search by name, SKU, or barcode...')}
               className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
             />
           </div>
@@ -927,10 +960,10 @@ function ProductsPage() {
             type="button"
             onClick={() => setIsSearchScannerOpen(true)}
             className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-blue-200/80 transition-colors cursor-pointer flex-shrink-0"
-            title="Scan barcode with camera"
+            title={tr('Сканувати штрихкод камерою', 'Scan barcode with camera')}
           >
             <ScanBarcode className="w-4 h-4" />
-            <span className="hidden sm:inline">Scan Barcode</span>
+            <span className="hidden sm:inline">{tr('Сканувати штрихкод', 'Scan Barcode')}</span>
           </button>
         </div>
 
@@ -948,8 +981,8 @@ function ProductsPage() {
               <FolderTree className="w-4 h-4 text-slate-400 shrink-0" />
               <span className="truncate">
                 {selectedCategoryIds.length === 0
-                  ? 'All Categories'
-                  : `Categories (${selectedCategoryIds.length})`}
+                  ? tr('Усі категорії', 'All Categories')
+                  : `${tr('Категорії', 'Categories')} (${selectedCategoryIds.length})`}
               </span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -958,7 +991,7 @@ function ProductsPage() {
           {isCategoryMenuOpen && (
             <div className="absolute right-0 top-full mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-30 max-h-64 overflow-y-auto space-y-1">
               <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
-                <span>Filter Categories</span>
+                <span>{tr('Фільтр категорій', 'Filter Categories')}</span>
                 {selectedCategoryIds.length > 0 && (
                   <button
                     type="button"
@@ -973,7 +1006,7 @@ function ProductsPage() {
                     }}
                     className="text-blue-600 hover:underline font-normal text-[11px] cursor-pointer"
                   >
-                    Clear
+                    {tr('Очистити', 'Clear')}
                   </button>
                 )}
               </div>
@@ -1012,8 +1045,8 @@ function ProductsPage() {
               <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
               <span className="truncate">
                 {selectedLocationIds.length === 0
-                  ? 'All Locations'
-                  : `Locations (${selectedLocationIds.length})`}
+                  ? tr('Усі локації', 'All Locations')
+                  : `${tr('Локації', 'Locations')} (${selectedLocationIds.length})`}
               </span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -1022,7 +1055,7 @@ function ProductsPage() {
           {isLocationMenuOpen && (
             <div className="absolute right-0 top-full mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-30 max-h-64 overflow-y-auto space-y-1">
               <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
-                <span>Filter Locations</span>
+                <span>{tr('Фільтр локацій', 'Filter Locations')}</span>
                 {selectedLocationIds.length > 0 && (
                   <button
                     type="button"
@@ -1037,7 +1070,7 @@ function ProductsPage() {
                     }}
                     className="text-blue-600 hover:underline font-normal text-[11px] cursor-pointer"
                   >
-                    Clear
+                    {tr('Очистити', 'Clear')}
                   </button>
                 )}
               </div>
@@ -1074,12 +1107,12 @@ function ProductsPage() {
                 className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50/90 border border-blue-200 rounded-xl text-xs text-blue-900"
               >
                 <FolderTree className="w-3 h-3 text-blue-600 shrink-0" />
-                <span className="font-medium">{cat?.name || 'Category'}</span>
+                <span className="font-medium">{cat?.name || tr('Категорія', 'Category')}</span>
                 <button
                   type="button"
                   onClick={() => toggleCategory(catId)}
                   className="hover:text-blue-600 p-0.5 rounded hover:bg-blue-100 transition-colors cursor-pointer"
-                  title="Remove category filter"
+                  title={tr('Прибрати фільтр категорії', 'Remove category filter')}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -1095,12 +1128,12 @@ function ProductsPage() {
                 className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50/90 border border-emerald-200 rounded-xl text-xs text-emerald-900"
               >
                 <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
-                <span className="font-medium">{loc?.name || 'Location'}</span>
+                <span className="font-medium">{loc?.name || tr('Локація', 'Location')}</span>
                 <button
                   type="button"
                   onClick={() => toggleLocation(locId)}
                   className="hover:text-emerald-600 p-0.5 rounded hover:bg-emerald-100 transition-colors cursor-pointer"
-                  title="Remove location filter"
+                  title={tr('Прибрати фільтр локації', 'Remove location filter')}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -1113,7 +1146,7 @@ function ProductsPage() {
             onClick={clearAllFilters}
             className="text-xs text-slate-500 hover:text-slate-800 underline px-1 py-1 cursor-pointer font-medium"
           >
-            Clear all filters
+            {tr('Очистити всі фільтри', 'Clear all filters')}
           </button>
         </div>
       )}
@@ -1129,29 +1162,42 @@ function ProductsPage() {
                 onChange={() => toggleSelectAll(products.map((p) => p.id))}
                 className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
               />
-              <span>Select all ({products.length})</span>
+              <span>
+                {tr(`Вибрати всі (${products.length})`, `Select all (${products.length})`)}
+              </span>
             </label>
           ) : (
-            <span className="font-medium text-slate-600">Product Catalog</span>
+            <span className="font-medium text-slate-600">
+              {tr('Каталог товарів', 'Product Catalog')}
+            </span>
           )}
-          <span>Showing {products.length} products</span>
+          <span>
+            {tr(`Показано товарів: ${products.length}`, `Showing ${products.length} products`)}
+          </span>
         </div>
       )}
 
       {isLoading ? (
-        <div className="text-center py-12 text-slate-400">Loading catalog...</div>
+        <div className="text-center py-12 text-slate-400">
+          {tr('Завантаження каталогу...', 'Loading catalog...')}
+        </div>
       ) : error ? (
         <div className="p-4 bg-red-50 text-red-700 rounded-xl text-sm">
-          Failed to load products. Please check connection.
+          {tr('Не вдалося завантажити товари. Перевірте підключення.', 'Failed to load products. Please check connection.')}
         </div>
       ) : products.length === 0 ? (
         <div className="text-center py-16 bg-white border border-dashed border-slate-300 rounded-2xl">
           <Package className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-          <h3 className="font-semibold text-slate-700">No products found</h3>
+          <h3 className="font-semibold text-slate-700">
+            {tr('Товарів не знайдено', 'No products found')}
+          </h3>
           <p className="text-sm text-slate-500 mt-1">
             {selectedCategoryIds.length > 0 || selectedLocationIds.length > 0
-              ? 'No products match the active filters. Try clearing category or location filter.'
-              : 'Try adjusting your search query.'}
+              ? tr(
+                  'Жоден товар не відповідає активним фільтрам. Спробуйте очистити фільтри категорій або локацій.',
+                  'No products match the active filters. Try clearing category or location filter.'
+                )
+              : tr('Спробуйте змінити пошуковий запит.', 'Try adjusting your search query.')}
           </p>
         </div>
       ) : (
@@ -1224,10 +1270,12 @@ function ProductsPage() {
                     {/* Stock Breakdown per Location */}
                     <div className="pt-3 border-t border-slate-100">
                       <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                        Stock per Location:
+                        {tr('Залишок по локаціях:', 'Stock per Location:')}
                       </div>
                       {item.stocks.length === 0 ? (
-                        <div className="text-xs text-slate-400 italic">No stock recorded yet</div>
+                        <div className="text-xs text-slate-400 italic">
+                          {tr('Залишків ще не зафіксовано', 'No stock recorded yet')}
+                        </div>
                       ) : (
                         <div className="flex flex-wrap gap-2">
                           {item.stocks.map((st) => {
@@ -1261,7 +1309,7 @@ function ProductsPage() {
                   <div className="flex items-end gap-6 md:flex-col md:items-end md:gap-2">
                     <div className="text-right">
                       <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                        Price
+                        {tr('Ціна', 'Price')}
                       </div>
                       <div className="text-xl font-black text-slate-950 mt-0.5">
                         {Number(item.price || 0).toLocaleString('uk-UA', {
@@ -1276,21 +1324,23 @@ function ProductsPage() {
                       {filteredLocationUnits !== null ? (
                         <>
                           <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">
-                            {selectedLocationIds.length === 1 ? 'Location Units' : 'Selected Units'}
+                            {selectedLocationIds.length === 1
+                              ? tr('На локації', 'Location Units')
+                              : tr('Вибрані локації', 'Selected Units')}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5 justify-end">
                             <span className="text-2xl font-black text-blue-700">
                               {filteredLocationUnits}
                             </span>
                             <span className="text-xs text-slate-400 font-medium">
-                              (Total: {item.total_stock})
+                              ({tr('Усього:', 'Total:')} {item.total_stock})
                             </span>
                           </div>
                         </>
                       ) : (
                         <>
                           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                            Total Units
+                            {tr('Усього одиниць', 'Total Units')}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span
@@ -1307,7 +1357,7 @@ function ProductsPage() {
                                   : 'bg-red-100 text-red-800'
                               }`}
                             >
-                              {hasStock ? 'In Stock' : 'Out of Stock'}
+                              {hasStock ? tr('В наявності', 'In Stock') : tr('Немає в наявності', 'Out of Stock')}
                             </span>
                           </div>
                         </>
@@ -1321,10 +1371,10 @@ function ProductsPage() {
                       type="button"
                       onClick={() => addToCart(item)}
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
-                      title="Add to sales cart"
+                      title={tr('Додати до кошика продажу', 'Add to sales cart')}
                     >
                       <ShoppingCart className="w-3.5 h-3.5" />
-                      <span>Add to Cart</span>
+                      <span>{tr('У кошик', 'Add to Cart')}</span>
                       {cartQuantity > 0 && (
                         <span className="bg-blue-800 text-white rounded-full px-1.5 py-0.2 text-[10px] font-bold">
                           {cartQuantity}
@@ -1337,14 +1387,14 @@ function ProductsPage() {
                         <button
                           onClick={() => setPriceHistoryProduct(item)}
                           className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
-                          title="View Supply Price History"
+                          title={tr('Історія цін поставок', 'View Supply Price History')}
                         >
                           <TrendingUp className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setStickerModalProducts([item])}
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer"
-                          title="Print Price Sticker"
+                          title={tr('Друкувати цінник зі штрихкодом', 'Print Price Sticker')}
                         >
                           <Printer className="w-4 h-4" />
                         </button>
@@ -1354,10 +1404,10 @@ function ProductsPage() {
                             setModalError(null)
                           }}
                           className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
-                          title="Adjust inventory"
+                          title={tr('Коригувати залишок', 'Adjust inventory')}
                         >
                           <SlidersHorizontal className="w-3.5 h-3.5" />
-                          Stock
+                          {tr('Залишок', 'Stock')}
                         </button>
                         <button
                           onClick={() => {
@@ -1366,18 +1416,25 @@ function ProductsPage() {
                             setIsProductModalOpen(true)
                           }}
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer"
-                          title="Edit product"
+                          title={tr('Редагувати товар', 'Edit product')}
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => {
-                            if (confirm(`Archive product "${item.name}"?`)) {
+                            if (
+                              confirm(
+                                tr(
+                                  `Архівувати товар "${item.name}"?`,
+                                  `Archive product "${item.name}"?`
+                                )
+                              )
+                            ) {
                               deleteMutation.mutate(item.id)
                             }
                           }}
                           className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                          title="Archive product"
+                          title={tr('Архівувати товар', 'Archive product')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1431,7 +1488,7 @@ function ProductsPage() {
             }),
           })
         }}
-        title="Scan Barcode to Search"
+        title={tr('Сканувати штрихкод для пошуку', 'Scan Barcode to Search')}
       />
 
       {/* Floating Batch Actions Bar */}
@@ -1440,7 +1497,10 @@ function ProductsPage() {
           <div className="flex items-center gap-2">
             <CheckSquare className="w-4 h-4 text-blue-400" />
             <span className="text-sm font-semibold">
-              {selectedProductIds.size} {selectedProductIds.size === 1 ? 'product' : 'products'} selected
+              {tr(
+                `Вибрано товарів: ${selectedProductIds.size}`,
+                `${selectedProductIds.size} ${selectedProductIds.size === 1 ? 'product' : 'products'} selected`
+              )}
             </span>
           </div>
 
@@ -1454,14 +1514,14 @@ function ProductsPage() {
             className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-blue-500/20"
           >
             <Printer className="w-4 h-4" />
-            Print Stickers ({selectedProductIds.size})
+            {tr(`Друкувати цінники (${selectedProductIds.size})`, `Print Stickers (${selectedProductIds.size})`)}
           </button>
 
           <button
             onClick={() => setSelectedProductIds(new Set())}
             className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
           >
-            Deselect all
+            {tr('Зняти виділення', 'Deselect all')}
           </button>
         </div>
       )}
@@ -1494,9 +1554,11 @@ function ProductsPage() {
               <ShoppingCart className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs text-slate-300 font-medium">Cart Active</div>
+              <div className="text-xs text-slate-300 font-medium">
+                {tr('Кошик активний', 'Cart Active')}
+              </div>
               <div className="text-sm font-bold">
-                {cartItems.reduce((sum, i) => sum + i.quantity, 0)} items • ₴
+                {cartItems.reduce((sum, i) => sum + i.quantity, 0)} {tr('шт.', 'items')} • ₴
                 {cartItems
                   .reduce((sum, i) => sum + i.quantity * i.price, 0)
                   .toFixed(2)}
@@ -1508,7 +1570,7 @@ function ProductsPage() {
             search={{ openCheckout: true }}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
-            <span>Proceed to Checkout</span>
+            <span>{tr('Перейти до оформлення', 'Proceed to Checkout')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

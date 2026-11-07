@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import JsBarcode from 'jsbarcode'
+import { useI18n } from '../i18n/i18n'
 import {
   X,
   Printer,
@@ -39,13 +40,14 @@ type PresetSize = '58x40' | '40x30' | '50x25' | 'custom'
 interface SizeDimensions {
   width: number
   height: number
-  name: string
+  nameUk: string
+  nameEn: string
 }
 
 const PRESETS: Record<Exclude<PresetSize, 'custom'>, SizeDimensions> = {
-  '58x40': { width: 58, height: 40, name: '58 × 40 mm (Standard)' },
-  '40x30': { width: 40, height: 30, name: '40 × 30 mm (Compact)' },
-  '50x25': { width: 50, height: 25, name: '50 × 25 mm (Narrow)' },
+  '58x40': { width: 58, height: 40, nameUk: '58 × 40 мм (Стандарт)', nameEn: '58 × 40 mm (Standard)' },
+  '40x30': { width: 40, height: 30, nameUk: '40 × 30 мм (Компакт)', nameEn: '40 × 30 mm (Compact)' },
+  '50x25': { width: 50, height: 25, nameUk: '50 × 25 мм (Вузький)', nameEn: '50 × 25 mm (Narrow)' },
 }
 
 /**
@@ -70,6 +72,7 @@ function BarcodeSvg({
   widthMm: number
   heightMm: number
 }) {
+  const { tr } = useI18n()
   const svgRef = useRef<SVGSVGElement>(null)
 
   useEffect(() => {
@@ -115,7 +118,7 @@ function BarcodeSvg({
   if (!code) {
     return (
       <div className="h-10 flex items-center justify-center border border-dashed border-slate-300 rounded text-[10px] text-slate-400">
-        No barcode set
+        {tr('Штрихкод не вказано', 'No barcode set')}
       </div>
     )
   }
@@ -141,6 +144,7 @@ function StickerCard({
   heightMm: number
   isPrintMode?: boolean
 }) {
+  const { tr } = useI18n()
   const isCompact = heightMm <= 30 || widthMm <= 40
 
   return (
@@ -190,7 +194,7 @@ function StickerCard({
       {/* Bottom: Retail Price */}
       <div className="pt-0.5 border-t border-slate-200 flex items-baseline justify-between">
         <span className="text-[8px] font-bold uppercase tracking-wider text-slate-500">
-          Ціна:
+          {tr('Ціна:', 'Price:')}
         </span>
         <span
           className={`font-black text-slate-950 tracking-tight ${
@@ -210,6 +214,7 @@ export function PriceStickerModal({
   products: initialProducts,
   onProductUpdated,
 }: PriceStickerModalProps) {
+  const { tr } = useI18n()
   const [items, setItems] = useState<StickerProduct[]>(initialProducts)
   const [preset, setPreset] = useState<PresetSize>('58x40')
   const [customWidth, setCustomWidth] = useState<number>(58)
@@ -274,7 +279,7 @@ export function PriceStickerModal({
   const handleSaveBarcode = async (product: StickerProduct) => {
     const code = barcodeInputs[product.id]?.trim()
     if (!code) {
-      setBarcodeError('Please provide a barcode')
+      setBarcodeError(tr('Будь ласка, введіть штрихкод', 'Please provide a barcode'))
       return
     }
     setSavingBarcodeId(product.id)
@@ -295,7 +300,7 @@ export function PriceStickerModal({
       setTimeout(() => setBarcodeSavedSuccess(null), 3000)
     } catch (err) {
       console.error(err)
-      setBarcodeError('Failed to save barcode to product.')
+      setBarcodeError(tr('Не вдалося зберегти штрихкод товару.', 'Failed to save barcode to product.'))
     } finally {
       setSavingBarcodeId(null)
     }
@@ -394,12 +399,17 @@ export function PriceStickerModal({
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  {items.length === 1 ? 'Print Price Sticker' : 'Batch Print Price Stickers'}
+                  {items.length === 1
+                    ? tr('Друк цінника зі штрихкодом', 'Print Price Sticker')
+                    : tr('Пакетний друк цінників', 'Batch Print Price Stickers')}
                 </h3>
                 <p className="text-xs text-slate-500">
                   {items.length === 1
-                    ? `Configuring sticker for ${items[0].name}`
-                    : `${items.length} products selected for thermal printing`}
+                    ? tr(`Налаштування етикетки для ${items[0].name}`, `Configuring sticker for ${items[0].name}`)
+                    : tr(
+                        `Вибрано товарів для термодруку: ${items.length}`,
+                        `${items.length} products selected for thermal printing`
+                      )}
                 </p>
               </div>
             </div>
@@ -423,11 +433,17 @@ export function PriceStickerModal({
                     <div>
                       <h4 className="text-xs font-bold text-amber-900">
                         {itemsMissingBarcode.length === 1
-                          ? 'Missing Barcode Detected'
-                          : `${itemsMissingBarcode.length} Products Have No Barcodes`}
+                          ? tr('Виявлено відсутній штрихкод', 'Missing Barcode Detected')
+                          : tr(
+                              `${itemsMissingBarcode.length} товарів не мають штрихкодів`,
+                              `${itemsMissingBarcode.length} Products Have No Barcodes`
+                            )}
                       </h4>
                       <p className="text-[11px] text-amber-700 mt-0.5">
-                        Assign an internal EAN-13 barcode to render a scannable code on the sticker.
+                        {tr(
+                          'Призначте внутрішній код EAN-13, щоб відобразити сканований штрихкод на етикетці.',
+                          'Assign an internal EAN-13 barcode to render a scannable code on the sticker.'
+                        )}
                       </p>
                     </div>
                   </div>
@@ -463,14 +479,14 @@ export function PriceStickerModal({
                                 [missingProd.id]: e.target.value,
                               }))
                             }
-                            placeholder="Enter barcode..."
+                            placeholder={tr('Введіть штрихкод...', 'Enter barcode...')}
                             className="w-32 px-2 py-1 text-xs font-mono rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50"
                           />
                           <button
                             type="button"
                             onClick={() => handleGenerateNewBarcode(missingProd.id)}
                             className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                            title="Generate another internal EAN-13 code"
+                            title={tr('Згенерувати інший внутрішній код EAN-13', 'Generate another internal EAN-13 code')}
                           >
                             <Sparkles className="w-3.5 h-3.5" />
                           </button>
@@ -481,14 +497,14 @@ export function PriceStickerModal({
                             className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
                           >
                             {savingBarcodeId === missingProd.id ? (
-                              'Saving...'
+                              tr('Збереження...', 'Saving...')
                             ) : barcodeSavedSuccess === missingProd.id ? (
                               <>
-                                <Check className="w-3.5 h-3.5" /> Saved
+                                <Check className="w-3.5 h-3.5" /> {tr('Збережено', 'Saved')}
                               </>
                             ) : (
                               <>
-                                <Save className="w-3.5 h-3.5" /> Save
+                                <Save className="w-3.5 h-3.5" /> {tr('Зберегти', 'Save')}
                               </>
                             )}
                           </button>
@@ -503,7 +519,7 @@ export function PriceStickerModal({
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2 flex items-center gap-1.5">
                   <Settings2 className="w-3.5 h-3.5 text-blue-600" />
-                  Sticker Label Size
+                  {tr('Розмір етикетки', 'Sticker Label Size')}
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {(Object.keys(PRESETS) as Array<Exclude<PresetSize, 'custom'>>).map((key) => {
@@ -519,7 +535,9 @@ export function PriceStickerModal({
                             : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
                         }`}
                       >
-                        <div className="text-xs leading-snug">{PRESETS[key].name}</div>
+                        <div className="text-xs leading-snug">
+                          {tr(PRESETS[key].nameUk, PRESETS[key].nameEn)}
+                        </div>
                       </button>
                     )
                   })}
@@ -532,7 +550,7 @@ export function PriceStickerModal({
                         : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
                     }`}
                   >
-                    <div className="text-xs leading-snug">Custom Size (mm)</div>
+                    <div className="text-xs leading-snug">{tr('Власний розмір (мм)', 'Custom Size (mm)')}</div>
                   </button>
                 </div>
 
@@ -541,7 +559,7 @@ export function PriceStickerModal({
                   <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-4">
                     <div className="flex-1">
                       <label className="block text-[11px] font-semibold text-slate-500 mb-1">
-                        Width (mm):
+                        {tr('Ширина (мм):', 'Width (mm):')}
                       </label>
                       <input
                         type="number"
@@ -555,7 +573,7 @@ export function PriceStickerModal({
                     <span className="text-slate-400 mt-4">×</span>
                     <div className="flex-1">
                       <label className="block text-[11px] font-semibold text-slate-500 mb-1">
-                        Height (mm):
+                        {tr('Висота (мм):', 'Height (mm):')}
                       </label>
                       <input
                         type="number"
@@ -575,11 +593,11 @@ export function PriceStickerModal({
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
                     <Copy className="w-3.5 h-3.5 text-blue-600" />
-                    Print Quantities
+                    {tr('Кількість копій для друку', 'Print Quantities')}
                   </label>
                   {items.length > 1 && (
                     <div className="flex items-center gap-1.5 text-xs">
-                      <span className="text-slate-500">Set all:</span>
+                      <span className="text-slate-500">{tr('Для всіх:', 'Set all:')}</span>
                       <button
                         type="button"
                         onClick={() => handleSetAllQuantities(1)}
@@ -664,10 +682,10 @@ export function PriceStickerModal({
               <div className="w-full flex items-center justify-between mb-4">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5 text-blue-600" />
-                  Live Sticker Preview
+                  {tr('Попередній перегляд етикетки', 'Live Sticker Preview')}
                 </span>
                 <span className="text-[11px] font-mono text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                  {activeWidth} × {activeHeight} mm
+                  {activeWidth} × {activeHeight} {tr('мм', 'mm')}
                 </span>
               </div>
 
@@ -682,15 +700,15 @@ export function PriceStickerModal({
 
               <div className="w-full mt-4 p-3 bg-white rounded-xl border border-slate-200 text-xs space-y-1.5">
                 <div className="flex justify-between text-slate-600">
-                  <span>Selected Products:</span>
+                  <span>{tr('Вибрано товарів:', 'Selected Products:')}</span>
                   <span className="font-bold text-slate-900">{items.length}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
-                  <span>Total Stickers to Print:</span>
+                  <span>{tr('Усього етикеток до друку:', 'Total Stickers to Print:')}</span>
                   <span className="font-bold text-blue-600 text-sm">{totalStickerCount}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
-                  <span>Roll Size:</span>
+                  <span>{tr('Розмір рулону:', 'Roll Size:')}</span>
                   <span className="font-mono text-slate-800">
                     {activeWidth}mm × {activeHeight}mm
                   </span>
@@ -706,7 +724,7 @@ export function PriceStickerModal({
               onClick={onClose}
               className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Скасувати', 'Cancel')}
             </button>
 
             <button
@@ -716,7 +734,12 @@ export function PriceStickerModal({
               className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
             >
               <Printer className="w-4 h-4" />
-              {isPrinting ? 'Preparing...' : `Print ${totalStickerCount} Sticker${totalStickerCount === 1 ? '' : 's'}`}
+              {isPrinting
+                ? tr('Підготовка...', 'Preparing...')
+                : tr(
+                    `Друкувати етикетки (${totalStickerCount})`,
+                    `Print ${totalStickerCount} Sticker${totalStickerCount === 1 ? '' : 's'}`
+                  )}
             </button>
           </div>
         </div>

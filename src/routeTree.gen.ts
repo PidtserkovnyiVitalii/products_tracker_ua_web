@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManagementRouteImport } from './routes/management'
+import { Route as MovementsRouteImport } from './routes/movements'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as SuppliesRouteImport } from './routes/supplies'
@@ -29,6 +30,11 @@ const LoginRoute = LoginRouteImport.update({
 const ManagementRoute = ManagementRouteImport.update({
   id: '/management',
   path: '/management',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MovementsRoute = MovementsRouteImport.update({
+  id: '/movements',
+  path: '/movements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsRoute = ProductsRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/management': typeof ManagementRoute
+  '/movements': typeof MovementsRoute
   '/products': typeof ProductsRoute
   '/sales': typeof SalesRoute
   '/supplies': typeof SuppliesRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/management': typeof ManagementRoute
+  '/movements': typeof MovementsRoute
   '/products': typeof ProductsRoute
   '/sales': typeof SalesRoute
   '/supplies': typeof SuppliesRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/management': typeof ManagementRoute
+  '/movements': typeof MovementsRoute
   '/products': typeof ProductsRoute
   '/sales': typeof SalesRoute
   '/supplies': typeof SuppliesRoute
@@ -75,14 +84,28 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/login' | '/management' | '/products' | '/sales' | '/supplies'
+    | '/'
+    | '/login'
+    | '/management'
+    | '/movements'
+    | '/products'
+    | '/sales'
+    | '/supplies'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/management' | '/products' | '/sales' | '/supplies'
+  to:
+    | '/'
+    | '/login'
+    | '/management'
+    | '/movements'
+    | '/products'
+    | '/sales'
+    | '/supplies'
   id:
     | '__root__'
     | '/'
     | '/login'
     | '/management'
+    | '/movements'
     | '/products'
     | '/sales'
     | '/supplies'
@@ -92,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   ManagementRoute: typeof ManagementRoute
+  MovementsRoute: typeof MovementsRoute
   ProductsRoute: typeof ProductsRoute
   SalesRoute: typeof SalesRoute
   SuppliesRoute: typeof SuppliesRoute
@@ -118,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/management'
       fullPath: '/management'
       preLoaderRoute: typeof ManagementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/movements': {
+      id: '/movements'
+      path: '/movements'
+      fullPath: '/movements'
+      preLoaderRoute: typeof MovementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products': {
@@ -148,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   ManagementRoute: ManagementRoute,
+  MovementsRoute: MovementsRoute,
   ProductsRoute: ProductsRoute,
   SalesRoute: SalesRoute,
   SuppliesRoute: SuppliesRoute,

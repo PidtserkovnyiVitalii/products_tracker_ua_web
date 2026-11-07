@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../store/authStore'
+import { useI18n } from '../i18n/i18n'
 import { api } from '../api/api'
 import {
   Package,
@@ -19,6 +20,7 @@ export const Route = createFileRoute('/')({
 function DashboardPage() {
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
+  const { tr, tRole } = useI18n()
   const isCashier = user?.role === 'cashier'
   const isStaff = user?.role === 'admin' || user?.role === 'stockkeeper'
 
@@ -70,12 +72,20 @@ function DashboardPage() {
               Products Tracker UA
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight">
-              {user ? `Welcome back, ${user.email}` : 'Welcome to Products Tracker'}
+              {user
+                ? tr(`З поверненням, ${user.email}`, `Welcome back, ${user.email}`)
+                : tr('Вітаємо у Products Tracker', 'Welcome to Products Tracker')}
             </h1>
             <p className="text-slate-300 text-sm mt-2 max-w-xl">
               {isCashier
-                ? 'Cashier Point-of-Sale terminal: search toys catalog, verify store stocks, process customer sales, and handle returns.'
-                : 'Centralized operational dashboard: catalog inventory, category tree taxonomy, physical location stocks, and customer orders.'}
+                ? tr(
+                    'Касовий POS-термінал: пошук у каталозі іграшок, перевірка залишків у магазинах, оформлення продажів та повернень.',
+                    'Cashier Point-of-Sale terminal: search toys catalog, verify store stocks, process customer sales, and handle returns.'
+                  )
+                : tr(
+                    'Централізована панель управління: каталог товарів, дерево категорій, залишки на складах і в магазинах та замовлення клієнтів.',
+                    'Centralized operational dashboard: catalog inventory, category tree taxonomy, physical location stocks, and customer orders.'
+                  )}
             </p>
           </div>
 
@@ -84,9 +94,9 @@ function DashboardPage() {
               <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
                 <div className="text-left">
-                  <div className="text-xs text-slate-300">Active Role</div>
+                  <div className="text-xs text-slate-300">{tr('Активна роль', 'Active Role')}</div>
                   <div className="text-sm font-bold uppercase tracking-wider text-white">
-                    {user?.role}
+                    {tRole(user?.role)}
                   </div>
                 </div>
               </div>
@@ -95,7 +105,7 @@ function DashboardPage() {
                 to="/login"
                 className="py-3 px-6 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-2xl shadow-lg transition-all"
               >
-                Sign In to Start
+                {tr('Увійти для початку роботи', 'Sign In to Start')}
               </Link>
             )}
           </div>
@@ -111,7 +121,7 @@ function DashboardPage() {
             </div>
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Products
+                {tr('Товари', 'Products')}
               </div>
               <div className="text-2xl font-black text-slate-900 mt-0.5">{productsCount}</div>
             </div>
@@ -123,7 +133,7 @@ function DashboardPage() {
             </div>
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Locations
+                {tr('Локації', 'Locations')}
               </div>
               <div className="text-2xl font-black text-slate-900 mt-0.5">{locationsCount}</div>
             </div>
@@ -135,7 +145,7 @@ function DashboardPage() {
             </div>
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Categories
+                {tr('Категорії', 'Categories')}
               </div>
               <div className="text-2xl font-black text-slate-900 mt-0.5">{categoriesCount}</div>
             </div>
@@ -147,7 +157,7 @@ function DashboardPage() {
             </div>
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Sales Orders
+                {tr('Продажі', 'Sales Orders')}
               </div>
               <div className="text-2xl font-black text-slate-900 mt-0.5">{salesCount}</div>
             </div>
@@ -167,18 +177,21 @@ function DashboardPage() {
                 <Receipt className="w-7 h-7" />
               </div>
               <div className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold mb-2">
-                Point of Sale
+                {tr('Касовий термінал', 'Point of Sale')}
               </div>
               <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-between">
-                <span>Sales & Checkout</span>
+                <span>{tr('Продажі та Каса', 'Sales & Checkout')}</span>
                 <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
               </h2>
               <p className="text-slate-500 text-sm mt-3 leading-relaxed">
-                Create new customer orders with camera barcode scanning, apply discounts, choose cash/card payments, and process receipt refunds.
+                {tr(
+                  'Створюйте замовлення зі скануванням штрихкодів камерою, застосовуйте знижки, приймайте оплату готівкою чи карткою та оформлюйте повернення.',
+                  'Create new customer orders with camera barcode scanning, apply discounts, choose cash/card payments, and process receipt refunds.'
+                )}
               </p>
             </div>
             <div className="mt-8 flex items-center gap-2 text-sm font-bold text-emerald-600">
-              <span>Open Sales Terminal</span>
+              <span>{tr('Відкрити касовий термінал', 'Open Sales Terminal')}</span>
               <span>&rarr;</span>
             </div>
           </Link>
@@ -192,18 +205,21 @@ function DashboardPage() {
                 <Package className="w-7 h-7" />
               </div>
               <div className="inline-block px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold mb-2">
-                Catalog & Stock
+                {tr('Каталог і залишки', 'Catalog & Stock')}
               </div>
               <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-between">
-                <span>Products Catalog</span>
+                <span>{tr('Каталог товарів', 'Products Catalog')}</span>
                 <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
               </h2>
               <p className="text-slate-500 text-sm mt-3 leading-relaxed">
-                Search and review toys, filter by multiple categories and store locations, verify unit availability, and add items directly to cart.
+                {tr(
+                  'Шукайте та переглядайте іграшки, фільтруйте за категоріями та магазинами, перевіряйте наявність і додавайте товари до кошика.',
+                  'Search and review toys, filter by multiple categories and store locations, verify unit availability, and add items directly to cart.'
+                )}
               </p>
             </div>
             <div className="mt-8 flex items-center gap-2 text-sm font-bold text-blue-600">
-              <span>Browse Catalog</span>
+              <span>{tr('Переглянути каталог', 'Browse Catalog')}</span>
               <span>&rarr;</span>
             </div>
           </Link>
@@ -222,15 +238,18 @@ function DashboardPage() {
                 <Package className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-slate-900 text-lg flex items-center justify-between">
-                <span>Products & Inventory</span>
+                <span>{tr('Товари та Залишки', 'Products & Inventory')}</span>
                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
               </h3>
               <p className="text-slate-500 text-xs mt-2 leading-relaxed">
-                Manage catalog items, edit prices & descriptions, adjust warehouse stocks, and print barcode price stickers.
+                {tr(
+                  'Керуйте позиціями каталогу, редагуйте ціни й описи, коригуйте складські залишки та друкуйте етикетки зі штрихкодами.',
+                  'Manage catalog items, edit prices & descriptions, adjust warehouse stocks, and print barcode price stickers.'
+                )}
               </p>
             </div>
             <div className="mt-6 text-xs font-bold text-blue-600 flex items-center gap-1">
-              <span>Manage Products</span>
+              <span>{tr('Керувати товарами', 'Manage Products')}</span>
               <span>&rarr;</span>
             </div>
           </Link>
@@ -244,15 +263,18 @@ function DashboardPage() {
                 <Receipt className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-slate-900 text-lg flex items-center justify-between">
-                <span>Sales & Orders</span>
+                <span>{tr('Продажі та Чеки', 'Sales & Orders')}</span>
                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
               </h3>
               <p className="text-slate-500 text-xs mt-2 leading-relaxed">
-                Process customer sales, track transaction revenue, print 80mm/A4 receipts, and perform stock-restoring refunds.
+                {tr(
+                  'Оформлюйте продажі клієнтам, відстежуйте виручку, друкуйте чеки 80мм/A4 та виконуйте повернення з відновленням залишків.',
+                  'Process customer sales, track transaction revenue, print 80mm/A4 receipts, and perform stock-restoring refunds.'
+                )}
               </p>
             </div>
             <div className="mt-6 text-xs font-bold text-emerald-600 flex items-center gap-1">
-              <span>View Sales</span>
+              <span>{tr('Переглянути продажі', 'View Sales')}</span>
               <span>&rarr;</span>
             </div>
           </Link>
@@ -266,15 +288,18 @@ function DashboardPage() {
                 <Settings2 className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-slate-900 text-lg flex items-center justify-between">
-                <span>Management</span>
+                <span>{tr('Управління', 'Management')}</span>
                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
               </h3>
               <p className="text-slate-500 text-xs mt-2 leading-relaxed">
-                Configure hierarchical category tree taxonomy and physical store & warehouse locations across Ukraine.
+                {tr(
+                  'Налаштовуйте ієрархічне дерево категорій, фізичні магазини, склади та постачальників по всій Україні.',
+                  'Configure hierarchical category tree taxonomy and physical store & warehouse locations across Ukraine.'
+                )}
               </p>
             </div>
             <div className="mt-6 text-xs font-bold text-purple-600 flex items-center gap-1">
-              <span>Configure Structure</span>
+              <span>{tr('Налаштувати структуру', 'Configure Structure')}</span>
               <span>&rarr;</span>
             </div>
           </Link>

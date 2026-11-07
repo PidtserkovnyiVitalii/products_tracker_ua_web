@@ -1,10 +1,12 @@
 import { create } from 'zustand'
+import { useI18nStore, type Locale } from '../i18n/i18n'
 
 export type UserRole = 'admin' | 'cashier' | 'stockkeeper'
 
 export interface User {
   email: string
   role: UserRole
+  locale?: Locale
 }
 
 interface AuthState {
@@ -26,6 +28,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   setAuth: (token, user) => {
     localStorage.setItem('auth_token', token)
     localStorage.setItem('auth_user', JSON.stringify(user))
+    useI18nStore.getState().syncLocaleOnLogin(user.locale)
     set({ token, user })
   },
   logout: () => {

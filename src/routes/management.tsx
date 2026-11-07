@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, type FormEvent } from 'react'
 import axios from 'axios'
 import { api } from '../api/api'
 import { useAuthStore } from '../store/authStore'
+import { useI18n } from '../i18n/i18n'
 import {
   FolderTree,
   MapPin,
@@ -61,6 +62,7 @@ function CategoryItem({
   onAddChild: (parent: CategoryNode) => void
   onEdit: (category: CategoryNode) => void
 }) {
+  const { tr } = useI18n()
   const [isOpen, setIsOpen] = useState(true)
   const hasChildren = node.children && node.children.length > 0
 
@@ -82,7 +84,7 @@ function CategoryItem({
           <div
             onClick={() => canManage && onEdit(node)}
             className={`flex items-center gap-2 ${canManage ? 'cursor-pointer group' : ''}`}
-            title={canManage ? 'Click to edit category' : undefined}
+            title={canManage ? tr('Натисніть, щоб редагувати категорію', 'Click to edit category') : undefined}
           >
             <span className="font-semibold text-slate-800 text-sm group-hover:text-blue-600 transition-colors">
               {node.name}
@@ -103,7 +105,7 @@ function CategoryItem({
             className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 bg-slate-100 hover:bg-blue-50 px-2.5 py-1 rounded-lg transition-colors"
           >
             <Package className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">View Products</span>
+            <span className="hidden sm:inline">{tr('Переглянути товари', 'View Products')}</span>
           </Link>
 
           {canManage && (
@@ -111,15 +113,15 @@ function CategoryItem({
               <button
                 onClick={() => onAddChild(node)}
                 className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                title="Add Subcategory"
+                title={tr('Додати підкатегорію', 'Add Subcategory')}
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Subcategory</span>
+                <span className="hidden sm:inline">{tr('Підкатегорія', 'Subcategory')}</span>
               </button>
               <button
                 onClick={() => onDelete(node.id)}
                 className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors cursor-pointer"
-                title="Delete Category"
+                title={tr('Видалити категорію', 'Delete Category')}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -161,6 +163,7 @@ function CategoryModal({
   isPending: boolean
   errorMsg: string | null
 }) {
+  const { tr } = useI18n()
   const [name, setName] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -187,7 +190,9 @@ function CategoryModal({
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 w-full max-w-md overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-lg font-bold text-slate-800">
-            {parent ? `Add Subcategory to "${parent.name}"` : 'New Root Category'}
+            {parent
+              ? tr(`Додати підкатегорію до "${parent.name}"`, `Add Subcategory to "${parent.name}"`)
+              : tr('Нова коренева категорія', 'New Root Category')}
           </h2>
           <button
             onClick={onClose}
@@ -207,14 +212,14 @@ function CategoryModal({
 
           <div className="mb-5">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              Category Name <span className="text-red-500">*</span>
+              {tr('Назва категорії', 'Category Name')} <span className="text-red-500">*</span>
             </label>
             <input
               ref={inputRef}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Action Figures, Board Games..."
+              placeholder={tr('напр. Фігурки, Настільні ігри...', 'e.g. Action Figures, Board Games...')}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               required
             />
@@ -226,14 +231,14 @@ function CategoryModal({
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Скасувати', 'Cancel')}
             </button>
             <button
               type="submit"
               disabled={isPending || !name.trim()}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
             >
-              {isPending ? 'Creating...' : 'Create Category'}
+              {isPending ? tr('Створення...', 'Creating...') : tr('Створити категорію', 'Create Category')}
             </button>
           </div>
         </form>
@@ -255,6 +260,7 @@ function EditCategoryModal({
   isPending: boolean
   errorMsg: string | null
 }) {
+  const { tr } = useI18n()
   const [name, setName] = useState(category.name)
   const [slug, setSlug] = useState(category.slug)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -281,7 +287,7 @@ function EditCategoryModal({
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 w-full max-w-md overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800">Edit Category</h2>
+          <h2 className="text-lg font-bold text-slate-800">{tr('Редагувати категорію', 'Edit Category')}</h2>
           <button
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
@@ -300,7 +306,7 @@ function EditCategoryModal({
 
           <div className="mb-4">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              Category Name <span className="text-red-500">*</span>
+              {tr('Назва категорії', 'Category Name')} <span className="text-red-500">*</span>
             </label>
             <input
               ref={inputRef}
@@ -331,14 +337,14 @@ function EditCategoryModal({
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Скасувати', 'Cancel')}
             </button>
             <button
               type="submit"
               disabled={isPending || !name.trim() || !slug.trim()}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
             >
-              {isPending ? 'Saving...' : 'Save Changes'}
+              {isPending ? tr('Збереження...', 'Saving...') : tr('Зберегти зміни', 'Save Changes')}
             </button>
           </div>
         </form>
@@ -348,6 +354,7 @@ function EditCategoryModal({
 }
 
 function CategoriesManager({ canManage, token }: { canManage: boolean; token: string | null }) {
+  const { tr } = useI18n()
   const queryClient = useQueryClient()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [modalParent, setModalParent] = useState<CategoryNode | null>(null)
@@ -374,11 +381,11 @@ function CategoriesManager({ canManage, token }: { canManage: boolean; token: st
       setIsAddModalOpen(false)
       setModalParent(null)
       setModalError(null)
-      setSuccessMsg('Category created successfully!')
+      setSuccessMsg(tr('Категорію успішно створено!', 'Category created successfully!'))
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to create category'
+      let msg = tr('Не вдалося створити категорію', 'Failed to create category')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg = typeof err.response.data.errors === 'string'
           ? err.response.data.errors
@@ -397,11 +404,11 @@ function CategoriesManager({ canManage, token }: { canManage: boolean; token: st
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       setEditingCategory(null)
       setModalError(null)
-      setSuccessMsg('Category updated successfully!')
+      setSuccessMsg(tr('Категорію успішно оновлено!', 'Category updated successfully!'))
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to update category'
+      let msg = tr('Не вдалося оновити категорію', 'Failed to update category')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg = typeof err.response.data.errors === 'string'
           ? err.response.data.errors
@@ -417,16 +424,23 @@ function CategoriesManager({ canManage, token }: { canManage: boolean; token: st
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
-      setSuccessMsg('Category deleted.')
+      setSuccessMsg(tr('Категорію видалено.', 'Category deleted.'))
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: () => {
-      alert('Failed to delete category.')
+      alert(tr('Не вдалося видалити категорію.', 'Failed to delete category.'))
     },
   })
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this category? Subcategories will be moved to root.')) {
+    if (
+      confirm(
+        tr(
+          'Ви впевнені, що хочете видалити цю категорію? Підкатегорії буде переміщено на кореневий рівень.',
+          'Are you sure you want to delete this category? Subcategories will be moved to root.'
+        )
+      )
+    ) {
       deleteMutation.mutate(id)
     }
   }
@@ -435,8 +449,10 @@ function CategoriesManager({ canManage, token }: { canManage: boolean; token: st
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Taxonomy Tree</h2>
-          <p className="text-xs text-slate-500">Configure product hierarchy and subcategories</p>
+          <h2 className="text-xl font-bold text-slate-900">{tr('Дерево категорій', 'Taxonomy Tree')}</h2>
+          <p className="text-xs text-slate-500">
+            {tr('Налаштування ієрархії товарів та підкатегорій', 'Configure product hierarchy and subcategories')}
+          </p>
         </div>
         {canManage && (
           <button
@@ -448,7 +464,7 @@ function CategoriesManager({ canManage, token }: { canManage: boolean; token: st
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Add Root Category
+            {tr('Додати кореневу категорію', 'Add Root Category')}
           </button>
         )}
       </div>
@@ -461,17 +477,24 @@ function CategoriesManager({ canManage, token }: { canManage: boolean; token: st
       )}
 
       {isLoading ? (
-        <div className="text-center py-12 text-slate-400 text-sm">Loading categories...</div>
+        <div className="text-center py-12 text-slate-400 text-sm">
+          {tr('Завантаження категорій...', 'Loading categories...')}
+        </div>
       ) : error ? (
         <div className="p-4 bg-red-50 text-red-700 rounded-xl text-xs">
-          Failed to load category taxonomy.
+          {tr('Не вдалося завантажити дерево категорій.', 'Failed to load category taxonomy.')}
         </div>
       ) : categories.length === 0 ? (
         <div className="text-center py-16 bg-white border border-dashed border-slate-300 rounded-2xl">
           <FolderTree className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-          <h3 className="font-semibold text-slate-700 text-sm">No categories yet</h3>
+          <h3 className="font-semibold text-slate-700 text-sm">
+            {tr('Категорій ще немає', 'No categories yet')}
+          </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Create your first root category to start organizing products.
+            {tr(
+              'Створіть першу кореневу категорію для організації товарів.',
+              'Create your first root category to start organizing products.'
+            )}
           </p>
         </div>
       ) : (
@@ -543,6 +566,7 @@ function LocationModal({
   isPending: boolean
   errorMsg: string | null
 }) {
+  const { tr } = useI18n()
   const [name, setName] = useState(location?.name || '')
   const [address, setAddress] = useState(location?.address || '')
   const [locationType, setLocationType] = useState(location?.location_type || 'store')
@@ -575,7 +599,7 @@ function LocationModal({
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 w-full max-w-md overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-lg font-bold text-slate-800">
-            {location ? 'Edit Location' : 'New Location'}
+            {location ? tr('Редагувати локацію', 'Edit Location') : tr('Нова локація', 'New Location')}
           </h2>
           <button
             onClick={onClose}
@@ -595,14 +619,14 @@ function LocationModal({
 
           <div className="mb-4">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              Location Name <span className="text-red-500">*</span>
+              {tr('Назва локації', 'Location Name')} <span className="text-red-500">*</span>
             </label>
             <input
               ref={inputRef}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Central Store, Kyiv Warehouse"
+              placeholder={tr('напр. Центральний магазин, Київський склад', 'e.g. Central Store, Kyiv Warehouse')}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               required
             />
@@ -610,28 +634,28 @@ function LocationModal({
 
           <div className="mb-4">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              Physical Address
+              {tr('Фізична адреса', 'Physical Address')}
             </label>
             <input
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="e.g. Khreshchatyk St, 1, Kyiv"
+              placeholder={tr('напр. вул. Хрещатик, 1, Київ', 'e.g. Khreshchatyk St, 1, Kyiv')}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             />
           </div>
 
           <div className="mb-5">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              Type
+              {tr('Тип', 'Type')}
             </label>
             <select
               value={locationType}
               onChange={(e) => setLocationType(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
             >
-              <option value="store">Retail Store</option>
-              <option value="warehouse">Warehouse</option>
+              <option value="store">{tr('Роздрібний магазин', 'Retail Store')}</option>
+              <option value="warehouse">{tr('Склад', 'Warehouse')}</option>
             </select>
           </div>
 
@@ -641,14 +665,18 @@ function LocationModal({
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Скасувати', 'Cancel')}
             </button>
             <button
               type="submit"
               disabled={isPending || !name.trim()}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
             >
-              {isPending ? 'Saving...' : location ? 'Save Changes' : 'Create Location'}
+              {isPending
+                ? tr('Збереження...', 'Saving...')
+                : location
+                ? tr('Зберегти зміни', 'Save Changes')
+                : tr('Створити локацію', 'Create Location')}
             </button>
           </div>
         </form>
@@ -658,6 +686,7 @@ function LocationModal({
 }
 
 function LocationsManager({ canManage, token }: { canManage: boolean; token: string | null }) {
+  const { tr } = useI18n()
   const queryClient = useQueryClient()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingLocation, setEditingLocation] = useState<LocationRecord | null>(null)
@@ -682,11 +711,11 @@ function LocationsManager({ canManage, token }: { canManage: boolean; token: str
       queryClient.invalidateQueries({ queryKey: ['locations'] })
       setIsModalOpen(false)
       setModalError(null)
-      setSuccessMsg('Location created successfully!')
+      setSuccessMsg(tr('Локацію успішно створено!', 'Location created successfully!'))
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to create location'
+      let msg = tr('Не вдалося створити локацію', 'Failed to create location')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg = typeof err.response.data.errors === 'string'
           ? err.response.data.errors
@@ -705,11 +734,11 @@ function LocationsManager({ canManage, token }: { canManage: boolean; token: str
       queryClient.invalidateQueries({ queryKey: ['locations'] })
       setEditingLocation(null)
       setModalError(null)
-      setSuccessMsg('Location updated successfully!')
+      setSuccessMsg(tr('Локацію успішно оновлено!', 'Location updated successfully!'))
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to update location'
+      let msg = tr('Не вдалося оновити локацію', 'Failed to update location')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg = typeof err.response.data.errors === 'string'
           ? err.response.data.errors
@@ -725,16 +754,23 @@ function LocationsManager({ canManage, token }: { canManage: boolean; token: str
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] })
-      setSuccessMsg('Location deleted.')
+      setSuccessMsg(tr('Локацію видалено.', 'Location deleted.'))
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: () => {
-      alert('Failed to delete location.')
+      alert(tr('Не вдалося видалити локацію.', 'Failed to delete location.'))
     },
   })
 
   const handleDelete = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete "${name}"? Stock records linked to this location may be affected.`)) {
+    if (
+      confirm(
+        tr(
+          `Ви впевнені, що хочете видалити "${name}"? Записи залишків цієї локації можуть бути зачеплені.`,
+          `Are you sure you want to delete "${name}"? Stock records linked to this location may be affected.`
+        )
+      )
+    ) {
       deleteMutation.mutate(id)
     }
   }
@@ -743,8 +779,15 @@ function LocationsManager({ canManage, token }: { canManage: boolean; token: str
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Physical Stores & Warehouses</h2>
-          <p className="text-xs text-slate-500">Retail storefronts and warehouse distribution points across Ukraine</p>
+          <h2 className="text-xl font-bold text-slate-900">
+            {tr('Фізичні магазини та склади', 'Physical Stores & Warehouses')}
+          </h2>
+          <p className="text-xs text-slate-500">
+            {tr(
+              'Роздрібні магазини та складські розподільчі центри по Україні',
+              'Retail storefronts and warehouse distribution points across Ukraine'
+            )}
+          </p>
         </div>
         {canManage && (
           <button
@@ -756,7 +799,7 @@ function LocationsManager({ canManage, token }: { canManage: boolean; token: str
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Add Location
+            {tr('Додати локацію', 'Add Location')}
           </button>
         )}
       </div>
@@ -769,17 +812,24 @@ function LocationsManager({ canManage, token }: { canManage: boolean; token: str
       )}
 
       {isLoading ? (
-        <div className="text-center py-12 text-slate-400 text-sm">Loading locations...</div>
+        <div className="text-center py-12 text-slate-400 text-sm">
+          {tr('Завантаження локацій...', 'Loading locations...')}
+        </div>
       ) : error ? (
         <div className="p-4 bg-red-50 text-red-700 rounded-xl text-xs">
-          Failed to load locations.
+          {tr('Не вдалося завантажити локації.', 'Failed to load locations.')}
         </div>
       ) : locations.length === 0 ? (
         <div className="text-center py-16 bg-white border border-dashed border-slate-300 rounded-2xl">
           <MapPin className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-          <h3 className="font-semibold text-slate-700 text-sm">No locations registered</h3>
+          <h3 className="font-semibold text-slate-700 text-sm">
+            {tr('Локацій не зареєстровано', 'No locations registered')}
+          </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Add your retail store or warehouse to start tracking inventory.
+            {tr(
+              'Додайте магазин або склад, щоб почати облік залишків.',
+              'Add your retail store or warehouse to start tracking inventory.'
+            )}
           </p>
         </div>
       ) : (
@@ -801,14 +851,14 @@ function LocationsManager({ canManage, token }: { canManage: boolean; token: str
                       {isWarehouse ? <Warehouse className="w-5 h-5" /> : <Store className="w-5 h-5" />}
                     </div>
                     <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                      {isWarehouse ? 'Warehouse' : 'Store'}
+                      {isWarehouse ? tr('Склад', 'Warehouse') : tr('Магазин', 'Store')}
                     </span>
                   </div>
 
                   <h3 className="font-bold text-slate-900 text-base mb-1">{loc.name}</h3>
                   <p className="text-xs text-slate-500 flex items-center gap-1.5 mb-4">
                     <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
-                    <span>{loc.address || 'No physical address specified'}</span>
+                    <span>{loc.address || tr('Фізична адреса не вказана', 'No physical address specified')}</span>
                   </p>
                 </div>
 
@@ -818,7 +868,7 @@ function LocationsManager({ canManage, token }: { canManage: boolean; token: str
                     search={{ location_id: loc.id }}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover:underline"
                   >
-                    <span>View Stock</span>
+                    <span>{tr('Переглянути залишки', 'View Stock')}</span>
                     <ArrowRight className="w-3 h-3" />
                   </Link>
 
@@ -831,14 +881,14 @@ function LocationsManager({ canManage, token }: { canManage: boolean; token: str
                           setIsModalOpen(true)
                         }}
                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                        title="Edit Location"
+                        title={tr('Редагувати локацію', 'Edit Location')}
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(loc.id, loc.name)}
                         className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                        title="Delete Location"
+                        title={tr('Видалити локацію', 'Delete Location')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -900,6 +950,7 @@ function SupplierModal({
   isPending: boolean
   errorMsg: string | null
 }) {
+  const { tr } = useI18n()
   const [name, setName] = useState(supplier?.name || '')
   const [phone, setPhone] = useState(supplier?.phone || '')
   const [address, setAddress] = useState(supplier?.address || '')
@@ -934,7 +985,7 @@ function SupplierModal({
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 w-full max-w-md overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-lg font-bold text-slate-800">
-            {supplier ? 'Edit Supplier' : 'New Supplier'}
+            {supplier ? tr('Редагувати постачальника', 'Edit Supplier') : tr('Новий постачальник', 'New Supplier')}
           </h2>
           <button
             onClick={onClose}
@@ -954,7 +1005,7 @@ function SupplierModal({
 
           <div className="mb-4">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              Supplier Name <span className="text-red-500">*</span>
+              {tr('Назва постачальника', 'Supplier Name')} <span className="text-red-500">*</span>
             </label>
             <input
               ref={inputRef}
@@ -969,7 +1020,7 @@ function SupplierModal({
 
           <div className="mb-4">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              Phone Number (Optional)
+              {tr('Номер телефону (необов’язково)', 'Phone Number (Optional)')}
             </label>
             <input
               type="text"
@@ -982,7 +1033,7 @@ function SupplierModal({
 
           <div className="mb-4">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              Address (Optional)
+              {tr('Адреса (необов’язково)', 'Address (Optional)')}
             </label>
             <input
               type="text"
@@ -995,13 +1046,16 @@ function SupplierModal({
 
           <div className="mb-5">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              Notes (Optional)
+              {tr('Примітки (необов’язково)', 'Notes (Optional)')}
             </label>
             <textarea
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Delivery schedule, payment terms, contact person..."
+              placeholder={tr(
+                'Графік доставки, умови оплати, контактна особа...',
+                'Delivery schedule, payment terms, contact person...'
+              )}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
             />
           </div>
@@ -1012,14 +1066,18 @@ function SupplierModal({
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Скасувати', 'Cancel')}
             </button>
             <button
               type="submit"
               disabled={isPending || !name.trim()}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl shadow-xs transition-colors cursor-pointer"
             >
-              {isPending ? 'Saving...' : supplier ? 'Save Changes' : 'Create Supplier'}
+              {isPending
+                ? tr('Збереження...', 'Saving...')
+                : supplier
+                ? tr('Зберегти зміни', 'Save Changes')
+                : tr('Створити постачальника', 'Create Supplier')}
             </button>
           </div>
         </form>
@@ -1029,6 +1087,7 @@ function SupplierModal({
 }
 
 function SuppliersManager({ canManage, token }: { canManage: boolean; token: string | null }) {
+  const { tr } = useI18n()
   const queryClient = useQueryClient()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState<SupplierRecord | null>(null)
@@ -1053,11 +1112,11 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
       setIsModalOpen(false)
       setModalError(null)
-      setSuccessMsg('Supplier created successfully!')
+      setSuccessMsg(tr('Постачальника успішно створено!', 'Supplier created successfully!'))
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to create supplier'
+      let msg = tr('Не вдалося створити постачальника', 'Failed to create supplier')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg =
           typeof err.response.data.errors === 'string'
@@ -1084,11 +1143,11 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
       setIsModalOpen(false)
       setEditingSupplier(null)
       setModalError(null)
-      setSuccessMsg('Supplier updated successfully!')
+      setSuccessMsg(tr('Постачальника успішно оновлено!', 'Supplier updated successfully!'))
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to update supplier'
+      let msg = tr('Не вдалося оновити постачальника', 'Failed to update supplier')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg =
           typeof err.response.data.errors === 'string'
@@ -1105,11 +1164,11 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
-      setSuccessMsg('Supplier removed.')
+      setSuccessMsg(tr('Постачальника видалено.', 'Supplier removed.'))
       setTimeout(() => setSuccessMsg(null), 3000)
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to delete supplier.'
+      let msg = tr('Не вдалося видалити постачальника.', 'Failed to delete supplier.')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg =
           typeof err.response.data.errors === 'string'
@@ -1121,7 +1180,14 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
   })
 
   const handleDelete = (supplier: SupplierRecord) => {
-    if (confirm(`Are you sure you want to delete supplier "${supplier.name}"?`)) {
+    if (
+      confirm(
+        tr(
+          `Ви впевнені, що хочете видалити постачальника "${supplier.name}"?`,
+          `Are you sure you want to delete supplier "${supplier.name}"?`
+        )
+      )
+    ) {
       deleteMutation.mutate(supplier.id)
     }
   }
@@ -1130,9 +1196,14 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Suppliers & Vendors</h2>
+          <h2 className="text-xl font-bold text-slate-900">
+            {tr('Постачальники та Дистриб’ютори', 'Suppliers & Vendors')}
+          </h2>
           <p className="text-xs text-slate-500">
-            Configure product distributors, contact information, and delivery terms
+            {tr(
+              'Налаштування постачальників товарів, контактної інформації та умов доставки',
+              'Configure product distributors, contact information, and delivery terms'
+            )}
           </p>
         </div>
         {canManage && (
@@ -1145,7 +1216,7 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Add Supplier
+            {tr('Додати постачальника', 'Add Supplier')}
           </button>
         )}
       </div>
@@ -1158,17 +1229,24 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
       )}
 
       {isLoading ? (
-        <div className="text-center py-12 text-slate-400 text-sm">Loading suppliers...</div>
+        <div className="text-center py-12 text-slate-400 text-sm">
+          {tr('Завантаження постачальників...', 'Loading suppliers...')}
+        </div>
       ) : error ? (
         <div className="p-4 bg-red-50 text-red-700 rounded-xl text-xs">
-          Failed to load suppliers.
+          {tr('Не вдалося завантажити постачальників.', 'Failed to load suppliers.')}
         </div>
       ) : suppliers.length === 0 ? (
         <div className="text-center py-16 bg-white border border-dashed border-slate-300 rounded-2xl">
           <Truck className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-          <h3 className="font-semibold text-slate-700 text-sm">No suppliers registered</h3>
+          <h3 className="font-semibold text-slate-700 text-sm">
+            {tr('Постачальників не зареєстровано', 'No suppliers registered')}
+          </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Add your first supplier to start recording inventory supplies.
+            {tr(
+              'Додайте першого постачальника, щоб почати оформлення поставок.',
+              'Add your first supplier to start recording inventory supplies.'
+            )}
           </p>
         </div>
       ) : (
@@ -1184,7 +1262,8 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
                     <Truck className="w-5 h-5" />
                   </div>
                   <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                    {sup.supplies_count ?? 0} {sup.supplies_count === 1 ? 'Supply' : 'Supplies'}
+                    {sup.supplies_count ?? 0}{' '}
+                    {tr('поставок', sup.supplies_count === 1 ? 'Supply' : 'Supplies')}
                   </span>
                 </div>
 
@@ -1193,11 +1272,11 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
                 <div className="space-y-1.5 mb-4">
                   <p className="text-xs text-slate-600 flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
-                    <span>{sup.phone || 'No phone number'}</span>
+                    <span>{sup.phone || tr('Немає телефону', 'No phone number')}</span>
                   </p>
                   <p className="text-xs text-slate-500 flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
-                    <span>{sup.address || 'No address specified'}</span>
+                    <span>{sup.address || tr('Адреса не вказана', 'No address specified')}</span>
                   </p>
                   {sup.notes && (
                     <p className="text-xs text-slate-500 flex items-start gap-1.5 pt-1 border-t border-slate-100 mt-2">
@@ -1214,7 +1293,7 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
                   search={{ supplier_id: sup.id }}
                   className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover:underline"
                 >
-                  <span>View Supplies</span>
+                  <span>{tr('Переглянути поставки', 'View Supplies')}</span>
                   <ArrowRight className="w-3 h-3" />
                 </Link>
 
@@ -1227,14 +1306,14 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
                         setIsModalOpen(true)
                       }}
                       className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                      title="Edit Supplier"
+                      title={tr('Редагувати постачальника', 'Edit Supplier')}
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(sup)}
                       className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                      title="Delete Supplier"
+                      title={tr('Видалити постачальника', 'Delete Supplier')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1273,6 +1352,7 @@ function SuppliersManager({ canManage, token }: { canManage: boolean; token: str
    ========================================================================= */
 
 function ManagementPage() {
+  const { tr } = useI18n()
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
   const { tab = 'categories' } = Route.useSearch()
@@ -1286,15 +1366,20 @@ function ManagementPage() {
         <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200/80 inline-block text-amber-600 mb-4">
           <ShieldAlert className="w-10 h-10 mx-auto" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2">Access Restricted</h2>
+        <h2 className="text-xl font-bold text-slate-900 mb-2">
+          {tr('Доступ обмежено', 'Access Restricted')}
+        </h2>
         <p className="text-sm text-slate-500 mb-6">
-          Management of categories, store locations, and suppliers is reserved for Stockkeepers and Administrators.
+          {tr(
+            'Управління категоріями, локаціями та постачальниками доступне лише комірникам та адміністраторам.',
+            'Management of categories, store locations, and suppliers is reserved for Stockkeepers and Administrators.'
+          )}
         </p>
         <Link
           to="/products"
           className="px-5 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-xl shadow-xs hover:bg-blue-700 transition-colors inline-block"
         >
-          Return to Products Catalog
+          {tr('Повернутися до каталогу товарів', 'Return to Products Catalog')}
         </Link>
       </div>
     )
@@ -1309,9 +1394,14 @@ function ManagementPage() {
             <Settings2 className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Structure Management</h1>
+            <h1 className="text-2xl font-bold text-slate-900">
+              {tr('Управління структурою', 'Structure Management')}
+            </h1>
             <p className="text-xs text-slate-500">
-              Taxonomy categories tree, physical location points, and suppliers
+              {tr(
+                'Дерево категорій товарів, фізичні локації та постачальники',
+                'Taxonomy categories tree, physical location points, and suppliers'
+              )}
             </p>
           </div>
         </div>
@@ -1328,7 +1418,7 @@ function ManagementPage() {
             }`}
           >
             <FolderTree className="w-3.5 h-3.5" />
-            <span>Categories</span>
+            <span>{tr('Категорії', 'Categories')}</span>
           </button>
           <button
             type="button"
@@ -1340,7 +1430,7 @@ function ManagementPage() {
             }`}
           >
             <MapPin className="w-3.5 h-3.5" />
-            <span>Locations</span>
+            <span>{tr('Локації', 'Locations')}</span>
           </button>
           <button
             type="button"
@@ -1352,7 +1442,7 @@ function ManagementPage() {
             }`}
           >
             <Truck className="w-3.5 h-3.5" />
-            <span>Suppliers</span>
+            <span>{tr('Постачальники', 'Suppliers')}</span>
           </button>
         </div>
       </div>

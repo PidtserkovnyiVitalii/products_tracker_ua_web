@@ -10,13 +10,15 @@ export const api = axios.create({
   },
 })
 
-// Request interceptor: attach bearer token
+// Request interceptor: attach bearer token and active locale header
 api.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    const activeLocale = localStorage.getItem('app_locale') || 'uk'
+    config.headers['Accept-Language'] = activeLocale
     return config
   },
   (error) => Promise.reject(error)

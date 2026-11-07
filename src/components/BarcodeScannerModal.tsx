@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
+import { useI18n } from '../i18n/i18n'
 import {
   X,
   Camera,
@@ -55,9 +56,11 @@ export function BarcodeScannerModal({
   isOpen,
   onClose,
   onScan,
-  title = 'Scan Barcode',
+  title,
   continuous = false,
 }: BarcodeScannerModalProps) {
+  const { tr } = useI18n()
+  const resolvedTitle = title || tr('Сканувати штрихкод', 'Scan Barcode')
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
   const [isStarting, setIsStarting] = useState(true)
@@ -156,11 +159,14 @@ export function BarcodeScannerModal({
       } catch (err: unknown) {
         if (!isMounted) return
         setIsStarting(false)
-        const msg = err instanceof Error ? err.message : 'Unable to access camera'
+        const msg = err instanceof Error ? err.message : tr('Не вдалося отримати доступ до камери', 'Unable to access camera')
         setCameraError(
           msg.includes('NotAllowedError') || msg.includes('Permission')
-            ? 'Camera permission denied. Please allow camera access in your browser settings or upload an image.'
-            : `Camera error: ${msg}`
+            ? tr(
+                'Доступ до камери заборонено. Дозвольте доступ у налаштуваннях браузера або завантажте фото.',
+                'Camera permission denied. Please allow camera access in your browser settings or upload an image.'
+              )
+            : `${tr('Помилка камери', 'Camera error')}: ${msg}`
         )
       }
     }
@@ -222,7 +228,12 @@ export function BarcodeScannerModal({
       onScan(decoded.trim())
       onClose()
     } catch {
-      setScanError('Could not detect any barcode in the uploaded image. Please ensure the barcode is sharp, well-lit, and not cropped.')
+      setScanError(
+        tr(
+          'Не вдалося розпізнати штрихкод на зображенні. Переконайтеся, що штрихкод чіткий та добре освітлений.',
+          'Could not detect any barcode in the uploaded image. Please ensure the barcode is sharp, well-lit, and not cropped.'
+        )
+      )
     } finally {
       setIsAnalyzingFile(false)
       if (fileInputRef.current) {
@@ -258,8 +269,10 @@ export function BarcodeScannerModal({
               <ScanBarcode className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-slate-100">{title}</h3>
-              <p className="text-xs text-slate-400">Point phone camera at product barcode</p>
+              <h3 className="font-bold text-base text-slate-100">{resolvedTitle}</h3>
+              <p className="text-xs text-slate-400">
+                {tr('Наведіть камеру на штрихкод товару', 'Point phone camera at product barcode')}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -269,7 +282,7 @@ export function BarcodeScannerModal({
                 onClick={onClose}
                 className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs transition-colors"
               >
-                Done {continuousCount > 0 ? `(${continuousCount})` : ''}
+                {tr('Готово', 'Done')} {continuousCount > 0 ? `(${continuousCount})` : ''}
               </button>
             )}
             <button
@@ -286,13 +299,15 @@ export function BarcodeScannerModal({
           <div className="mx-4 mt-3 p-3 bg-red-950/90 border border-red-500/60 rounded-2xl flex items-start gap-2.5 text-xs text-red-200 shadow-md">
             <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <span className="font-semibold text-red-300 block">Barcode Detection Failed</span>
+              <span className="font-semibold text-red-300 block">
+                {tr('Не вдалося розпізнати штрихкод', 'Barcode Detection Failed')}
+              </span>
               <span className="text-[11px] text-red-300/90">{scanError}</span>
             </div>
             <button
               onClick={() => setScanError(null)}
               className="text-red-400 hover:text-white p-0.5 rounded cursor-pointer transition-colors"
-              title="Dismiss"
+              title={tr('Закрити', 'Dismiss')}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -305,7 +320,9 @@ export function BarcodeScannerModal({
           {isAnalyzingFile && (
             <div className="absolute inset-0 z-20 bg-slate-950/90 flex flex-col items-center justify-center gap-3">
               <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm font-medium text-slate-200">Analyzing image for barcode...</p>
+              <p className="text-sm font-medium text-slate-200">
+                {tr('Аналіз зображення на наявність штрихкоду...', 'Analyzing image for barcode...')}
+              </p>
             </div>
           )}
 
@@ -326,7 +343,7 @@ export function BarcodeScannerModal({
                 <div className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent shadow-[0_0_12px_#ef4444] animate-pulse" />
               </div>
               <p className="text-[11px] text-slate-300 font-medium tracking-wide mt-3 bg-black/60 px-3 py-1 rounded-full backdrop-blur-xs">
-                Align barcode within the rectangle
+                {tr('Розмістіть штрихкод у рамці', 'Align barcode within the rectangle')}
               </p>
             </div>
           )}
@@ -335,7 +352,9 @@ export function BarcodeScannerModal({
           {isStarting && !cameraError && (
             <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center gap-3">
               <Camera className="w-8 h-8 text-blue-400 animate-pulse" />
-              <p className="text-sm font-medium text-slate-300">Starting camera...</p>
+              <p className="text-sm font-medium text-slate-300">
+                {tr('Запуск камери...', 'Starting camera...')}
+              </p>
             </div>
           )}
 
@@ -345,7 +364,9 @@ export function BarcodeScannerModal({
               <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-3">
                 <CameraOff className="w-6 h-6" />
               </div>
-              <h4 className="font-bold text-slate-200 text-sm mb-1">Camera Unavailable</h4>
+              <h4 className="font-bold text-slate-200 text-sm mb-1">
+                {tr('Камера недоступна', 'Camera Unavailable')}
+              </h4>
               <p className="text-xs text-slate-400 max-w-xs mb-5">{cameraError}</p>
               <div className="flex flex-col gap-2.5 w-full max-w-xs">
                 <button
@@ -355,7 +376,11 @@ export function BarcodeScannerModal({
                   className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
                 >
                   <Upload className="w-4 h-4" />
-                  <span>{isAnalyzingFile ? 'Analyzing Photo...' : 'Upload Photo with Barcode'}</span>
+                  <span>
+                    {isAnalyzingFile
+                      ? tr('Аналіз фото...', 'Analyzing Photo...')
+                      : tr('Завантажити фото зі штрихкодом', 'Upload Photo with Barcode')}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -363,7 +388,7 @@ export function BarcodeScannerModal({
                   className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <Keyboard className="w-4 h-4" />
-                  Enter Barcode Manually
+                  {tr('Ввести штрихкод вручну', 'Enter Barcode Manually')}
                 </button>
               </div>
             </div>
@@ -382,10 +407,12 @@ export function BarcodeScannerModal({
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                     : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
                 }`}
-                title="Toggle Torch/Flash"
+                title={tr('Увімкнути/вимкнути ліхтарик', 'Toggle Torch/Flash')}
               >
                 {torchOn ? <Flashlight className="w-4 h-4" /> : <FlashlightOff className="w-4 h-4" />}
-                <span className="hidden sm:inline">{torchOn ? 'Torch On' : 'Torch'}</span>
+                <span className="hidden sm:inline">
+                  {torchOn ? tr('Ліхтарик увімк.', 'Torch On') : tr('Ліхтарик', 'Torch')}
+                </span>
               </button>
             )}
 
@@ -394,10 +421,10 @@ export function BarcodeScannerModal({
                 type="button"
                 onClick={switchCamera}
                 className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Switch Camera"
+                title={tr('Перемкнути камеру', 'Switch Camera')}
               >
                 <SwitchCamera className="w-4 h-4" />
-                <span className="hidden sm:inline">Flip</span>
+                <span className="hidden sm:inline">{tr('Камера', 'Flip')}</span>
               </button>
             )}
 
@@ -405,10 +432,10 @@ export function BarcodeScannerModal({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Upload photo of barcode"
+              title={tr('Завантажити фото штрихкоду', 'Upload photo of barcode')}
             >
               <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Photo</span>
+              <span className="hidden sm:inline">{tr('Фото', 'Photo')}</span>
             </button>
             <input
               ref={fileInputRef}
@@ -425,7 +452,7 @@ export function BarcodeScannerModal({
             className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Keyboard className="w-4 h-4" />
-            <span>{showManual ? 'Hide Input' : 'Type Barcode'}</span>
+            <span>{showManual ? tr('Сховати поле', 'Hide Input') : tr('Ввести вручну', 'Type Barcode')}</span>
           </button>
         </div>
 
@@ -439,7 +466,7 @@ export function BarcodeScannerModal({
               type="text"
               value={manualInput}
               onChange={(e) => setManualInput(e.target.value)}
-              placeholder="e.g. 5702017161914"
+              placeholder={tr('напр. 5702017161914', 'e.g. 5702017161914')}
               className="flex-1 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
               autoFocus
             />
@@ -448,7 +475,7 @@ export function BarcodeScannerModal({
               disabled={!manualInput.trim()}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold rounded-xl cursor-pointer shadow-xs transition-colors"
             >
-              Apply
+              {tr('Застосувати', 'Apply')}
             </button>
           </form>
         )}

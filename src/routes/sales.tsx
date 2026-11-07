@@ -6,6 +6,7 @@ import axios from 'axios'
 import { api } from '../api/api'
 import { useCartStore } from '../store/cartStore'
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal'
+import { useI18n } from '../i18n/i18n'
 import {
   Receipt,
   Plus,
@@ -94,6 +95,7 @@ interface CartItem {
 }
 
 function SalesPage() {
+  const { tr } = useI18n()
   const queryClient = useQueryClient()
 
   // Filters & Search
@@ -153,14 +155,19 @@ function SalesPage() {
     onSuccess: (updatedSale: SaleRecord) => {
       queryClient.invalidateQueries({ queryKey: ['sales'] })
       queryClient.invalidateQueries({ queryKey: ['products'] })
-      showToast(`Sale #${updatedSale.id.slice(0, 8)} successfully refunded! Stock has been restored.`)
+      showToast(
+        tr(
+          `Продаж #${updatedSale.id.slice(0, 8)} успішно повернуто! Залишки відновлено.`,
+          `Sale #${updatedSale.id.slice(0, 8)} successfully refunded! Stock has been restored.`
+        )
+      )
       setRefundConfirmSale(null)
       if (viewingSale?.id === updatedSale.id) {
         setViewingSale(updatedSale)
       }
     },
     onError: (err: unknown) => {
-      let msg = 'Failed to process refund'
+      let msg = tr('Не вдалося оформити повернення', 'Failed to process refund')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg = Array.isArray(err.response.data.errors)
           ? err.response.data.errors.join(', ')
@@ -231,10 +238,13 @@ function SalesPage() {
             <div className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
               <Receipt className="w-6 h-6" />
             </div>
-            Customer Sales & Orders
+            {tr('Продажі та замовлення клієнтів', 'Customer Sales & Orders')}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Register in-store sales, auto-decrement inventory stock, and manage receipts
+            {tr(
+              'Реєструйте продажі в магазині, автоматично списуйте залишки та керуйте чеками',
+              'Register in-store sales, auto-decrement inventory stock, and manage receipts'
+            )}
           </p>
         </div>
 
@@ -243,7 +253,7 @@ function SalesPage() {
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm text-white bg-blue-600 hover:bg-blue-700 shadow-xs transition-colors cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          New Sale
+          {tr('Новий продаж', 'New Sale')}
         </button>
       </div>
 
@@ -254,7 +264,9 @@ function SalesPage() {
             <Receipt className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Orders</div>
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              {tr('Всього замовлень', 'Total Orders')}
+            </div>
             <div className="text-xl font-bold text-slate-900 mt-0.5">{metrics.totalSales}</div>
           </div>
         </div>
@@ -264,7 +276,9 @@ function SalesPage() {
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completed Revenue</div>
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              {tr('Виручка (завершені)', 'Completed Revenue')}
+            </div>
             <div className="text-xl font-bold text-slate-900 mt-0.5">₴{metrics.totalRevenue.toFixed(2)}</div>
           </div>
         </div>
@@ -274,7 +288,9 @@ function SalesPage() {
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completed Sales</div>
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              {tr('Завершені продажі', 'Completed Sales')}
+            </div>
             <div className="text-xl font-bold text-slate-900 mt-0.5">{metrics.completedCount}</div>
           </div>
         </div>
@@ -284,7 +300,9 @@ function SalesPage() {
             <RotateCcw className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Refunded Orders</div>
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              {tr('Повернення', 'Refunded Orders')}
+            </div>
             <div className="text-xl font-bold text-slate-900 mt-0.5">{metrics.refundedCount}</div>
           </div>
         </div>
@@ -300,7 +318,7 @@ function SalesPage() {
               statusFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            All Sales
+            {tr('Всі продажі', 'All Sales')}
           </button>
           <button
             onClick={() => setStatusFilter('completed')}
@@ -310,7 +328,7 @@ function SalesPage() {
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Completed
+            {tr('Завершені', 'Completed')}
           </button>
           <button
             onClick={() => setStatusFilter('refunded')}
@@ -318,7 +336,7 @@ function SalesPage() {
               statusFilter === 'refunded' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Refunded
+            {tr('Повернені', 'Refunded')}
           </button>
         </div>
 
@@ -329,7 +347,7 @@ function SalesPage() {
             onChange={(e) => setSelectedLocation(e.target.value)}
             className="w-full sm:w-48 px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
-            <option value="">All Locations</option>
+            <option value="">{tr('Всі локації', 'All Locations')}</option>
             {locations.map((loc) => (
               <option key={loc.id} value={loc.id}>
                 {loc.name}
@@ -341,7 +359,7 @@ function SalesPage() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search by ID, user, note, product..."
+              placeholder={tr('Пошук за ID, касиром, нотаткою, товаром...', 'Search by ID, user, note, product...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500"
@@ -353,13 +371,17 @@ function SalesPage() {
       {/* Sales Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         {isLoadingSales ? (
-          <div className="p-12 text-center text-slate-500 text-sm">Loading sales records...</div>
+          <div className="p-12 text-center text-slate-500 text-sm">
+            {tr('Завантаження історії продажів...', 'Loading sales records...')}
+          </div>
         ) : filteredSales.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
             <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-slate-700">No sales found</p>
+            <p className="text-sm font-semibold text-slate-700">{tr('Продажів не знайдено', 'No sales found')}</p>
             <p className="text-xs text-slate-400 mt-1">
-              {searchQuery ? 'Try adjusting your search criteria' : 'Click "New Sale" to register your first transaction'}
+              {searchQuery
+                ? tr('Спробуйте змінити критерії пошуку', 'Try adjusting your search criteria')
+                : tr('Натисніть "Новий продаж", щоб зареєструвати першу транзакцію', 'Click "New Sale" to register your first transaction')}
             </p>
           </div>
         ) : (
@@ -367,15 +389,15 @@ function SalesPage() {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-500 font-semibold uppercase tracking-wider">
-                  <th className="py-3 px-4">Order ID</th>
-                  <th className="py-3 px-4">Date & Time</th>
-                  <th className="py-3 px-4">Location</th>
-                  <th className="py-3 px-4">Cashier</th>
-                  <th className="py-3 px-4">Items</th>
-                  <th className="py-3 px-4">Payment</th>
-                  <th className="py-3 px-4">Total (₴)</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4">{tr('ID замовлення', 'Order ID')}</th>
+                  <th className="py-3 px-4">{tr('Дата та час', 'Date & Time')}</th>
+                  <th className="py-3 px-4">{tr('Локація', 'Location')}</th>
+                  <th className="py-3 px-4">{tr('Касир', 'Cashier')}</th>
+                  <th className="py-3 px-4">{tr('Товари', 'Items')}</th>
+                  <th className="py-3 px-4">{tr('Оплата', 'Payment')}</th>
+                  <th className="py-3 px-4">{tr('Сума (₴)', 'Total (₴)')}</th>
+                  <th className="py-3 px-4">{tr('Статус', 'Status')}</th>
+                  <th className="py-3 px-4 text-right">{tr('Дії', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -386,10 +408,10 @@ function SalesPage() {
                       {sale.customer_notes && (
                         <span
                           className="ml-1.5 inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-sans font-medium border border-amber-200"
-                          title={`Internal Note: ${sale.customer_notes}`}
+                          title={`${tr('Внутрішня нотатка', 'Internal Note')}: ${sale.customer_notes}`}
                         >
                           <FileText className="w-2.5 h-2.5 text-amber-600" />
-                          Note
+                          {tr('Нотатка', 'Note')}
                         </span>
                       )}
                     </td>
@@ -410,8 +432,10 @@ function SalesPage() {
                     </td>
                     <td className="py-3.5 px-4 text-slate-600">{sale.user.email}</td>
                     <td className="py-3.5 px-4 text-slate-700 font-semibold">
-                      {sale.sale_items.reduce((sum, item) => sum + item.quantity, 0)} pcs
-                      <span className="text-slate-400 font-normal ml-1">({sale.sale_items.length} types)</span>
+                      {sale.sale_items.reduce((sum, item) => sum + item.quantity, 0)} {tr('шт.', 'pcs')}
+                      <span className="text-slate-400 font-normal ml-1">
+                        ({sale.sale_items.length} {tr('поз.', 'types')})
+                      </span>
                     </td>
                     <td className="py-3.5 px-4">
                       <span
@@ -426,7 +450,7 @@ function SalesPage() {
                         ) : (
                           <Banknote className="w-3 h-3" />
                         )}
-                        {sale.payment_method}
+                        {sale.payment_method === 'card' ? tr('Картка', 'card') : tr('Готівка', 'cash')}
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
@@ -450,7 +474,7 @@ function SalesPage() {
                         ) : (
                           <RotateCcw className="w-3 h-3 text-slate-500" />
                         )}
-                        {sale.status}
+                        {sale.status === 'completed' ? tr('Завершено', 'completed') : tr('Повернено', 'refunded')}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
@@ -459,15 +483,15 @@ function SalesPage() {
                           onClick={() => setViewingSale(sale)}
                           className="px-2.5 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                         >
-                          Receipt
+                          {tr('Чек', 'Receipt')}
                         </button>
                         {sale.status === 'completed' && (
                           <button
                             onClick={() => setRefundConfirmSale(sale)}
                             className="px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                            title="Refund sale and restore inventory stock"
+                            title={tr('Повернути продаж та відновити залишки на складі', 'Refund sale and restore inventory stock')}
                           >
-                            Refund
+                            {tr('Повернення', 'Refund')}
                           </button>
                         )}
                       </div>
@@ -490,7 +514,7 @@ function SalesPage() {
             queryClient.invalidateQueries({ queryKey: ['sales'] })
             queryClient.invalidateQueries({ queryKey: ['products'] })
             setIsNewSaleOpen(false)
-            showToast(`Sale #${newSale.id.slice(0, 8)} successfully completed!`)
+            showToast(tr(`Продаж #${newSale.id.slice(0, 8)} успішно завершено!`, `Sale #${newSale.id.slice(0, 8)} successfully completed!`))
             setViewingSale(newSale)
           }}
         />
@@ -516,16 +540,21 @@ function SalesPage() {
                 <RotateCcw className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">Refund Sale #{refundConfirmSale.id.slice(0, 8)}?</h3>
+                <h3 className="text-base font-bold text-slate-900">
+                  {tr(`Повернути продаж #${refundConfirmSale.id.slice(0, 8)}?`, `Refund Sale #${refundConfirmSale.id.slice(0, 8)}?`)}
+                </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Total amount: <strong>₴{refundConfirmSale.total_price.toFixed(2)}</strong>
+                  {tr('Загальна сума:', 'Total amount:')} <strong>₴{refundConfirmSale.total_price.toFixed(2)}</strong>
                 </p>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
-              This action will mark the transaction as <strong>Refunded</strong> and automatically return all items back
-              into inventory stock at <strong>{refundConfirmSale.location.name}</strong>.
+              {tr(
+                `Ця дія позначить транзакцію як Повернену та автоматично поверне всі товари на залишки локації `,
+                `This action will mark the transaction as Refunded and automatically return all items back into inventory stock at `
+              )}
+              <strong>{refundConfirmSale.location.name}</strong>.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -534,7 +563,7 @@ function SalesPage() {
                 onClick={() => setRefundConfirmSale(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
               >
-                Cancel
+                {tr('Скасувати', 'Cancel')}
               </button>
               <button
                 type="button"
@@ -542,7 +571,7 @@ function SalesPage() {
                 onClick={() => refundMutation.mutate(refundConfirmSale.id)}
                 className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50"
               >
-                {refundMutation.isPending ? 'Processing...' : 'Confirm Refund'}
+                {refundMutation.isPending ? tr('Обробка...', 'Processing...') : tr('Підтвердити повернення', 'Confirm Refund')}
               </button>
             </div>
           </div>
@@ -566,6 +595,7 @@ function NewSaleModal({
   onClose: () => void
   onSuccess: (sale: SaleRecord) => void
 }) {
+  const { tr } = useI18n()
   const cartStoreItems = useCartStore((s) => s.items)
   const clearCartStore = useCartStore((s) => s.clearCart)
 
@@ -642,9 +672,18 @@ function NewSaleModal({
 
     if (matched) {
       addToCart(matched)
-      setScannerFeedback({ text: `Added "${matched.name}" (Stock: ${getAvailableStock(matched, locationId)})`, type: 'success' })
+      setScannerFeedback({
+        text: tr(
+          `Додано "${matched.name}" (Залишок: ${getAvailableStock(matched, locationId)})`,
+          `Added "${matched.name}" (Stock: ${getAvailableStock(matched, locationId)})`
+        ),
+        type: 'success',
+      })
     } else {
-      setScannerFeedback({ text: `Barcode "${cleanCode}" not found in catalog`, type: 'warn' })
+      setScannerFeedback({
+        text: tr(`Штрих-код "${cleanCode}" не знайдено в каталозі`, `Barcode "${cleanCode}" not found in catalog`),
+        type: 'warn',
+      })
     }
 
     setTimeout(() => setScannerFeedback(null), 3000)
@@ -691,25 +730,30 @@ function NewSaleModal({
     cart.forEach((item) => {
       const available = getAvailableStock(item.product, locationId)
       if (item.quantity > available) {
-        errors.push(`${item.product.name}: requested ${item.quantity}, available ${available}`)
+        errors.push(
+          tr(
+            `${item.product.name}: запитано ${item.quantity}, доступно ${available}`,
+            `${item.product.name}: requested ${item.quantity}, available ${available}`
+          )
+        )
       }
     })
     return errors
-  }, [cart, locationId])
+  }, [cart, locationId, tr])
 
   // Submit Sale
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!locationId) {
-      setErrorBanner('Please select a store location')
+      setErrorBanner(tr('Будь ласка, оберіть локацію магазину', 'Please select a store location'))
       return
     }
     if (cart.length === 0) {
-      setErrorBanner('Cart is empty. Please add products to complete the sale.')
+      setErrorBanner(tr('Кошик порожній. Додайте товари для завершення продажу.', 'Cart is empty. Please add products to complete the sale.'))
       return
     }
     if (stockErrors.length > 0) {
-      setErrorBanner(`Cannot proceed: ${stockErrors.join('; ')}`)
+      setErrorBanner(`${tr('Неможливо продовжити', 'Cannot proceed')}: ${stockErrors.join('; ')}`)
       return
     }
 
@@ -735,7 +779,7 @@ function NewSaleModal({
       clearCartStore()
       onSuccess(res.data)
     } catch (err: unknown) {
-      let msg = 'Failed to create sale'
+      let msg = tr('Не вдалося створити продаж', 'Failed to create sale')
       if (axios.isAxiosError(err) && err.response?.data?.errors) {
         msg = Array.isArray(err.response.data.errors)
           ? err.response.data.errors.join(', ')
@@ -757,8 +801,12 @@ function NewSaleModal({
               <ShoppingBag className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">New Sale / Register Order</h2>
-              <p className="text-xs text-slate-500">Pick location, scan/add products, and collect payment</p>
+              <h2 className="text-base font-bold text-slate-900">
+                {tr('Новий продаж / Оформлення замовлення', 'New Sale / Register Order')}
+              </h2>
+              <p className="text-xs text-slate-500">
+                {tr('Оберіть локацію, проскануйте або додайте товари та прийміть оплату', 'Pick location, scan/add products, and collect payment')}
+              </p>
             </div>
           </div>
           <button
@@ -799,7 +847,9 @@ function NewSaleModal({
           {/* Location & Payment Method Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Store Location</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                {tr('Локація магазину', 'Store Location')}
+              </label>
               <select
                 value={locationId}
                 onChange={(e) => setLocationId(e.target.value)}
@@ -815,7 +865,9 @@ function NewSaleModal({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                {tr('Спосіб оплати', 'Payment Method')}
+              </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -827,7 +879,7 @@ function NewSaleModal({
                   }`}
                 >
                   <Banknote className="w-4 h-4" />
-                  Cash
+                  {tr('Готівка', 'Cash')}
                 </button>
                 <button
                   type="button"
@@ -839,7 +891,7 @@ function NewSaleModal({
                   }`}
                 >
                   <CreditCard className="w-4 h-4" />
-                  Card
+                  {tr('Картка', 'Card')}
                 </button>
               </div>
             </div>
@@ -847,13 +899,15 @@ function NewSaleModal({
 
           {/* Product Search & Camera Scanner Trigger */}
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-slate-700">Search Product or Scan Barcode</label>
+            <label className="block text-xs font-semibold text-slate-700">
+              {tr('Пошук товару або сканування штрих-коду', 'Search Product or Scan Barcode')}
+            </label>
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Type name, SKU, or enter barcode..."
+                  placeholder={tr('Введіть назву, артикул або штрих-код...', 'Type name, SKU, or enter barcode...')}
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500"
@@ -864,10 +918,10 @@ function NewSaleModal({
                 type="button"
                 onClick={() => setIsScannerOpen(true)}
                 className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer shrink-0"
-                title="Scan physical barcodes continuously with camera"
+                title={tr('Безперервне сканування штрих-кодів камерою', 'Scan physical barcodes continuously with camera')}
               >
                 <Camera className="w-4 h-4" />
-                <span>Scan Camera</span>
+                <span>{tr('Сканувати камерою', 'Scan Camera')}</span>
               </button>
             </div>
 
@@ -886,7 +940,7 @@ function NewSaleModal({
                         <div>
                           <div className="font-semibold text-slate-900">{p.name}</div>
                           <div className="text-[11px] text-slate-400">
-                            SKU: {p.sku} {p.barcode ? `• Barcode: ${p.barcode}` : ''}
+                            SKU: {p.sku} {p.barcode ? `• ${tr('Штрих-код', 'Barcode')}: ${p.barcode}` : ''}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -895,14 +949,14 @@ function NewSaleModal({
                               avail > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
                             }`}
                           >
-                            Stock: {avail}
+                            {tr('Залишок', 'Stock')}: {avail}
                           </span>
                           <span className="font-bold text-slate-900">₴{p.price.toFixed(2)}</span>
                           <button
                             type="button"
                             className="px-2 py-1 bg-blue-600 text-white rounded-lg text-[11px] font-medium hover:bg-blue-700"
                           >
-                            Add
+                            {tr('Додати', 'Add')}
                           </button>
                         </div>
                       </div>
@@ -916,13 +970,16 @@ function NewSaleModal({
           {/* Cart Table */}
           <div className="border border-slate-200 rounded-2xl overflow-hidden">
             <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-600">
-              <span>Cart Items ({cart.length})</span>
-              <span>Subtotal: ₴{subtotal.toFixed(2)}</span>
+              <span>{tr(`Товари в кошику (${cart.length})`, `Cart Items (${cart.length})`)}</span>
+              <span>{tr('Проміжна сума:', 'Subtotal:')} ₴{subtotal.toFixed(2)}</span>
             </div>
 
             {cart.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
-                No items added yet. Search or use the camera scanner above to add products.
+                {tr(
+                  'Товари ще не додано. Скористайтеся пошуком або сканером камери вище.',
+                  'No items added yet. Search or use the camera scanner above to add products.'
+                )}
               </div>
             ) : (
               <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto">
@@ -947,13 +1004,13 @@ function NewSaleModal({
                                 : 'bg-red-100 text-red-700'
                             }`}
                           >
-                            Stock: {available}
+                            {tr('Залишок', 'Stock')}: {available}
                           </span>
                         </div>
                         <div className="text-[11px] text-slate-400 font-mono">SKU: {item.product.sku}</div>
                         {isExceeded && (
                           <div className="text-[11px] text-red-600 font-medium mt-0.5">
-                            Exceeds available stock ({available})
+                            {tr(`Перевищує доступний залишок (${available})`, `Exceeds available stock (${available})`)}
                           </div>
                         )}
                       </div>
@@ -995,7 +1052,7 @@ function NewSaleModal({
                             value={item.price}
                             onChange={(e) => updatePrice(item.product.id, parseFloat(e.target.value) || 0)}
                             className="w-20 px-2 py-1 text-xs border border-slate-200 rounded-lg text-right font-medium focus:outline-hidden"
-                            title="Price per unit (can be adjusted for discounts)"
+                            title={tr('Ціна за одиницю (можна змінити для знижки)', 'Price per unit (can be adjusted for discounts)')}
                           />
                         </div>
 
@@ -1026,7 +1083,7 @@ function NewSaleModal({
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                 <Percent className="w-3.5 h-3.5 text-blue-600" />
-                Order Discount (%)
+                {tr('Знижка на замовлення (%)', 'Order Discount (%)')}
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -1061,11 +1118,11 @@ function NewSaleModal({
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-slate-500" />
-                Customer Notes (Optional)
+                {tr('Нотатки про клієнта (необов’язково)', 'Customer Notes (Optional)')}
               </label>
               <input
                 type="text"
-                placeholder="e.g. VIP Customer, Phone +38050..., special delivery"
+                placeholder={tr('напр., VIP клієнт, Тел. +38050..., доставка', 'e.g. VIP Customer, Phone +38050..., special delivery')}
                 value={customerNotes}
                 onChange={(e) => setCustomerNotes(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500"
@@ -1077,15 +1134,15 @@ function NewSaleModal({
           <div className="bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-4 text-xs text-slate-400">
-                <span>Subtotal: ₴{subtotal.toFixed(2)}</span>
+                <span>{tr('Проміжна сума:', 'Subtotal:')} ₴{subtotal.toFixed(2)}</span>
                 {discountPercentage > 0 && (
                   <span className="text-emerald-400 font-semibold">
-                    Discount ({discountPercentage}%): -₴{discountAmount.toFixed(2)}
+                    {tr(`Знижка (${discountPercentage}%):`, `Discount (${discountPercentage}%):`)} -₴{discountAmount.toFixed(2)}
                   </span>
                 )}
               </div>
               <div className="text-2xl font-black text-white">
-                Total Payable: <span className="text-emerald-400">₴{totalPayable.toFixed(2)}</span>
+                {tr('До сплати:', 'Total Payable:')} <span className="text-emerald-400">₴{totalPayable.toFixed(2)}</span>
               </div>
             </div>
 
@@ -1095,14 +1152,14 @@ function NewSaleModal({
                 onClick={onClose}
                 className="px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
               >
-                Cancel
+                {tr('Скасувати', 'Cancel')}
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || cart.length === 0 || stockErrors.length > 0}
                 className="px-6 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {isSubmitting ? 'Processing...' : 'Complete Sale'}
+                {isSubmitting ? tr('Обробка...', 'Processing...') : tr('Завершити продаж', 'Complete Sale')}
               </button>
             </div>
           </div>
@@ -1114,7 +1171,7 @@ function NewSaleModal({
         <BarcodeScannerModal
           isOpen={isScannerOpen}
           continuous={true}
-          title="Scan Product Barcodes (Continuous)"
+          title={tr('Сканування штрих-кодів товарів (безперервно)', 'Scan Product Barcodes (Continuous)')}
           onClose={() => setIsScannerOpen(false)}
           onScan={handleBarcodeScan}
         />
@@ -1135,6 +1192,7 @@ function ReceiptModal({
   onClose: () => void
   onRefundClick: () => void
 }) {
+  const { tr } = useI18n()
   const [printFormat, setPrintFormat] = useState<'thermal80' | 'a4'>('thermal80')
 
   const handlePrint = () => {
@@ -1164,7 +1222,9 @@ function ReceiptModal({
               <Receipt className="w-6 h-6" />
             </div>
             <h2 className="text-lg font-bold text-slate-900">Products Tracker UA</h2>
-            <p className="text-xs text-slate-500 font-mono">Sale #{sale.id.slice(0, 8)}</p>
+            <p className="text-xs text-slate-500 font-mono">
+              {tr(`Продаж #${sale.id.slice(0, 8)}`, `Sale #${sale.id.slice(0, 8)}`)}
+            </p>
 
             <div className="mt-3 flex items-center justify-center gap-2">
               <span
@@ -1179,12 +1239,12 @@ function ReceiptModal({
                 ) : (
                   <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
                 )}
-                {sale.status}
+                {sale.status === 'completed' ? tr('Завершено', 'completed') : tr('Повернено', 'refunded')}
               </span>
 
               {sale.discount_percentage > 0 && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200">
-                  <Tag className="w-3 h-3" /> -{sale.discount_percentage}% Discount
+                  <Tag className="w-3 h-3" /> -{sale.discount_percentage}% {tr('Знижка', 'Discount')}
                 </span>
               )}
             </div>
@@ -1194,7 +1254,7 @@ function ReceiptModal({
           <div className="px-6 py-4 text-xs space-y-2 border-b border-dashed border-slate-200 text-slate-600">
             <div className="flex justify-between">
               <span className="text-slate-400 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> Date & Time:
+                <Clock className="w-3.5 h-3.5" /> {tr('Дата та час:', 'Date & Time:')}
               </span>
               <span className="font-medium text-slate-900">
                 {new Date(sale.created_at).toLocaleString('nl-NL', {
@@ -1208,13 +1268,13 @@ function ReceiptModal({
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5" /> Store Location:
+                <MapPin className="w-3.5 h-3.5" /> {tr('Локація магазину:', 'Store Location:')}
               </span>
               <span className="font-semibold text-slate-900">{sale.location.name}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400 flex items-center gap-1">
-                <UserIcon className="w-3.5 h-3.5" /> Cashier:
+                <UserIcon className="w-3.5 h-3.5" /> {tr('Касир:', 'Cashier:')}
               </span>
               <span className="text-slate-900 font-medium">{sale.user.email}</span>
             </div>
@@ -1225,16 +1285,18 @@ function ReceiptModal({
                 ) : (
                   <Banknote className="w-3.5 h-3.5" />
                 )}{' '}
-                Payment Method:
+                {tr('Спосіб оплати:', 'Payment Method:')}
               </span>
-              <span className="font-semibold text-slate-900 uppercase">{sale.payment_method}</span>
+              <span className="font-semibold text-slate-900 uppercase">
+                {sale.payment_method === 'card' ? tr('Картка', 'card') : tr('Готівка', 'cash')}
+              </span>
             </div>
             {sale.customer_notes && (
               <div className="pt-2.5 mt-2 border-t border-slate-100 flex items-start gap-2 text-xs bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/60 text-amber-900">
                 <FileText className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                 <div>
                   <span className="font-bold text-[10px] uppercase tracking-wider block text-amber-800">
-                    Internal Note (Not printed on receipts)
+                    {tr('Внутрішня нотатка (не друкується на чеках)', 'Internal Note (Not printed on receipts)')}
                   </span>
                   <span className="italic">{sale.customer_notes}</span>
                 </div>
@@ -1244,7 +1306,9 @@ function ReceiptModal({
 
           {/* Line Items */}
           <div className="px-6 py-4 flex-1 overflow-y-auto max-h-56 text-xs">
-            <div className="font-semibold text-slate-400 uppercase tracking-wider text-[10px] mb-2">Purchased Items</div>
+            <div className="font-semibold text-slate-400 uppercase tracking-wider text-[10px] mb-2">
+              {tr('Придбані товари', 'Purchased Items')}
+            </div>
             <div className="divide-y divide-slate-100">
               {sale.sale_items.map((item) => (
                 <div key={item.id} className="py-2 flex items-center justify-between">
@@ -1265,24 +1329,24 @@ function ReceiptModal({
             {/* Totals Breakdown */}
             <div className="space-y-1 text-xs">
               <div className="flex justify-between text-slate-500">
-                <span>Subtotal</span>
+                <span>{tr('Проміжна сума', 'Subtotal')}</span>
                 <span>₴{sale.subtotal.toFixed(2)}</span>
               </div>
               {sale.discount_percentage > 0 && (
                 <div className="flex justify-between text-emerald-600 font-medium">
-                  <span>Discount ({sale.discount_percentage}%)</span>
+                  <span>{tr(`Знижка (${sale.discount_percentage}%)`, `Discount (${sale.discount_percentage}%)`)}</span>
                   <span>-₴{discountAmount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between text-base font-bold text-slate-900 pt-1 border-t border-slate-200">
-                <span>Total Amount</span>
+                <span>{tr('Загальна сума', 'Total Amount')}</span>
                 <span className="text-xl">₴{sale.total_price.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Format toggle: 80mm vs A4 */}
             <div className="flex items-center justify-between pt-1">
-              <span className="text-xs font-semibold text-slate-600">Print Format:</span>
+              <span className="text-xs font-semibold text-slate-600">{tr('Формат друку:', 'Print Format:')}</span>
               <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 text-xs">
                 <button
                   type="button"
@@ -1293,7 +1357,7 @@ function ReceiptModal({
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  80mm Thermal Roll
+                  {tr('Стрічка 80мм', '80mm Thermal Roll')}
                 </button>
                 <button
                   type="button"
@@ -1304,7 +1368,7 @@ function ReceiptModal({
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  A4 Invoice
+                  {tr('Накладна A4', 'A4 Invoice')}
                 </button>
               </div>
             </div>
@@ -1317,7 +1381,7 @@ function ReceiptModal({
                 className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
               >
                 <Printer className="w-4 h-4" />
-                Print Receipt
+                {tr('Друкувати чек', 'Print Receipt')}
               </button>
 
               <div className="flex items-center gap-2">
@@ -1328,7 +1392,7 @@ function ReceiptModal({
                     className="px-3.5 py-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl border border-red-200 transition-colors cursor-pointer flex items-center gap-1.5"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    Refund Order
+                    {tr('Повернути замовлення', 'Refund Order')}
                   </button>
                 )}
                 <button
@@ -1336,7 +1400,7 @@ function ReceiptModal({
                   onClick={onClose}
                   className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                 >
-                  Close
+                  {tr('Закрити', 'Close')}
                 </button>
               </div>
             </div>
@@ -1367,6 +1431,7 @@ function DedicatedPrintReceipt({
   format: 'thermal80' | 'a4'
   discountAmount: number
 }) {
+  const { tr } = useI18n()
   const portalNode = typeof document !== 'undefined' ? document.body : null
   if (!portalNode) return null
 
@@ -1434,8 +1499,12 @@ function DedicatedPrintReceipt({
                 minute: '2-digit',
               })}
             </div>
-            <div style={{ fontSize: '10px' }}>Receipt #: {sale.id.slice(0, 8).toUpperCase()}</div>
-            <div style={{ fontSize: '10px' }}>Cashier: {sale.user.email}</div>
+            <div style={{ fontSize: '10px' }}>
+              {tr('Чек №:', 'Receipt #:')} {sale.id.slice(0, 8).toUpperCase()}
+            </div>
+            <div style={{ fontSize: '10px' }}>
+              {tr('Касир:', 'Cashier:')} {sale.user.email}
+            </div>
           </div>
 
           <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />
@@ -1444,10 +1513,10 @@ function DedicatedPrintReceipt({
           <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
-                <th style={{ paddingBottom: '3px' }}>Item / SKU</th>
-                <th style={{ textAlign: 'center', paddingBottom: '3px' }}>Qty</th>
-                <th style={{ textAlign: 'right', paddingBottom: '3px' }}>Price</th>
-                <th style={{ textAlign: 'right', paddingBottom: '3px' }}>Total</th>
+                <th style={{ paddingBottom: '3px' }}>{tr('Товар / SKU', 'Item / SKU')}</th>
+                <th style={{ textAlign: 'center', paddingBottom: '3px' }}>{tr('К-сть', 'Qty')}</th>
+                <th style={{ textAlign: 'right', paddingBottom: '3px' }}>{tr('Ціна', 'Price')}</th>
+                <th style={{ textAlign: 'right', paddingBottom: '3px' }}>{tr('Сума', 'Total')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1474,12 +1543,12 @@ function DedicatedPrintReceipt({
           {/* Totals */}
           <div style={{ fontSize: '11px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Subtotal:</span>
+              <span>{tr('Проміжна сума:', 'Subtotal:')}</span>
               <span>₴{sale.subtotal.toFixed(2)}</span>
             </div>
             {sale.discount_percentage > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#222' }}>
-                <span>Discount ({sale.discount_percentage}%):</span>
+                <span>{tr(`Знижка (${sale.discount_percentage}%):`, `Discount (${sale.discount_percentage}%):`)}</span>
                 <span>-₴{discountAmount.toFixed(2)}</span>
               </div>
             )}
@@ -1494,12 +1563,14 @@ function DedicatedPrintReceipt({
                 paddingTop: '4px',
               }}
             >
-              <span>TOTAL PAYABLE:</span>
+              <span>{tr('ДО СПЛАТИ:', 'TOTAL PAYABLE:')}</span>
               <span>₴{sale.total_price.toFixed(2)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginTop: '2px' }}>
-              <span>Payment:</span>
-              <span style={{ textTransform: 'uppercase' }}>{sale.payment_method}</span>
+              <span>{tr('Оплата:', 'Payment:')}</span>
+              <span style={{ textTransform: 'uppercase' }}>
+                {sale.payment_method === 'card' ? tr('КАРТКА', 'CARD') : tr('ГОТІВКА', 'CASH')}
+              </span>
             </div>
           </div>
 
@@ -1510,7 +1581,8 @@ function DedicatedPrintReceipt({
             <div>ДЯКУЄМО ЗА ПОКУПКУ!</div>
             <div>THANK YOU FOR YOUR PURCHASE!</div>
             <div style={{ fontSize: '8px', color: '#666', marginTop: '4px' }}>
-              FISCAL STATUS: {sale.fiscal_code ? sale.fiscal_code : 'IN-STORE TRANSACTION'}
+              {tr('ФІСКАЛЬНИЙ СТАТУС:', 'FISCAL STATUS:')}{' '}
+              {sale.fiscal_code ? sale.fiscal_code : tr('ВНУТРІШНЯ ТРАНЗАКЦІЯ', 'IN-STORE TRANSACTION')}
             </div>
           </div>
         </div>
@@ -1542,13 +1614,15 @@ function DedicatedPrintReceipt({
                 PRODUCTS TRACKER UA
               </h1>
               <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '11px' }}>
-                Official Sales Receipt & Invoice
+                {tr('Видаткова накладна та товарний чек', 'Official Sales Receipt & Invoice')}
               </p>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '14px', fontWeight: 'bold' }}>Receipt #{sale.id.slice(0, 8).toUpperCase()}</div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                {tr('Чек №', 'Receipt #')}{sale.id.slice(0, 8).toUpperCase()}
+              </div>
               <div style={{ color: '#4b5563', fontSize: '11px' }}>
-                Date:{' '}
+                {tr('Дата:', 'Date:')}{' '}
                 {new Date(sale.created_at).toLocaleString('nl-NL', {
                   day: '2-digit',
                   month: '2-digit',
@@ -1574,16 +1648,19 @@ function DedicatedPrintReceipt({
           >
             <div>
               <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                Store Location
+                {tr('Локація магазину', 'Store Location')}
               </div>
               <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{sale.location.name}</div>
             </div>
             <div>
               <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                Transaction Info
+                {tr('Інформація про транзакцію', 'Transaction Info')}
               </div>
-              <div>Cashier: {sale.user.email}</div>
-              <div>Payment Method: {sale.payment_method.toUpperCase()}</div>
+              <div>{tr('Касир:', 'Cashier:')} {sale.user.email}</div>
+              <div>
+                {tr('Спосіб оплати:', 'Payment Method:')}{' '}
+                {sale.payment_method === 'card' ? tr('КАРТКА', 'CARD') : tr('ГОТІВКА', 'CASH')}
+              </div>
             </div>
           </div>
 
@@ -1591,13 +1668,17 @@ function DedicatedPrintReceipt({
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
             <thead>
               <tr style={{ backgroundColor: '#f3f4f6', borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                <th style={{ padding: '8px 10px', fontSize: '11px', color: '#4b5563' }}>Product</th>
+                <th style={{ padding: '8px 10px', fontSize: '11px', color: '#4b5563' }}>{tr('Товар', 'Product')}</th>
                 <th style={{ padding: '8px 10px', fontSize: '11px', color: '#4b5563' }}>SKU</th>
-                <th style={{ padding: '8px 10px', fontSize: '11px', color: '#4b5563', textAlign: 'center' }}>Qty</th>
-                <th style={{ padding: '8px 10px', fontSize: '11px', color: '#4b5563', textAlign: 'right' }}>
-                  Unit Price
+                <th style={{ padding: '8px 10px', fontSize: '11px', color: '#4b5563', textAlign: 'center' }}>
+                  {tr('К-сть', 'Qty')}
                 </th>
-                <th style={{ padding: '8px 10px', fontSize: '11px', color: '#4b5563', textAlign: 'right' }}>Total</th>
+                <th style={{ padding: '8px 10px', fontSize: '11px', color: '#4b5563', textAlign: 'right' }}>
+                  {tr('Ціна за од.', 'Unit Price')}
+                </th>
+                <th style={{ padding: '8px 10px', fontSize: '11px', color: '#4b5563', textAlign: 'right' }}>
+                  {tr('Сума', 'Total')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1621,12 +1702,12 @@ function DedicatedPrintReceipt({
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
             <div style={{ width: '220px', borderTop: '2px solid #e5e7eb', paddingTop: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                <span style={{ color: '#4b5563' }}>Subtotal:</span>
+                <span style={{ color: '#4b5563' }}>{tr('Проміжна сума:', 'Subtotal:')}</span>
                 <span style={{ fontWeight: 'bold' }}>₴{sale.subtotal.toFixed(2)}</span>
               </div>
               {sale.discount_percentage > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#059669' }}>
-                  <span>Discount ({sale.discount_percentage}%):</span>
+                  <span>{tr(`Знижка (${sale.discount_percentage}%):`, `Discount (${sale.discount_percentage}%):`)}</span>
                   <span>-₴{discountAmount.toFixed(2)}</span>
                 </div>
               )}
@@ -1641,7 +1722,7 @@ function DedicatedPrintReceipt({
                   marginTop: '4px',
                 }}
               >
-                <span>Total Amount:</span>
+                <span>{tr('Загальна сума:', 'Total Amount:')}</span>
                 <span style={{ color: '#2563eb' }}>₴{sale.total_price.toFixed(2)}</span>
               </div>
             </div>
@@ -1657,7 +1738,10 @@ function DedicatedPrintReceipt({
               fontSize: '10px',
             }}
           >
-            Thank you for shopping with Products Tracker UA! • Customer Support: support@productstracker.ua
+            {tr(
+              'Дякуємо за покупку в Products Tracker UA! • Служба підтримки: support@productstracker.ua',
+              'Thank you for shopping with Products Tracker UA! • Customer Support: support@productstracker.ua'
+            )}
           </div>
         </div>
       )}
