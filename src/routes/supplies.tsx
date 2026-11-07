@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, useMemo, type FormEvent } from 'react'
+import { useState, useMemo, useEffect, type FormEvent } from 'react'
 import axios from 'axios'
 import { api } from '../api/api'
 import { useAuthStore } from '../store/authStore'
 import { useI18n } from '../i18n/i18n'
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal'
+import { PrintWaybillPortal, type PrintableWaybillData } from '../components/PrintWaybillPortal'
+import { exportSupplyToExcel } from '../utils/waybillExport'
 import { generateInternalEan13 } from '../utils/barcode'
 import {
   Truck,
@@ -28,6 +30,8 @@ import {
   FileText,
   Layers,
   TrendingUp,
+  Printer,
+  FileSpreadsheet,
 } from 'lucide-react'
 
 export const Route = createFileRoute('/supplies')({
@@ -38,11 +42,13 @@ export const Route = createFileRoute('/supplies')({
     location_id?: string
     status?: string
     query?: string
+    view_id?: string
   } => ({
     supplier_id: (search.supplier_id as string) || undefined,
     location_id: (search.location_id as string) || undefined,
     status: (search.status as string) || undefined,
     query: (search.query as string) || undefined,
+    view_id: (search.view_id as string) || undefined,
   }),
   component: SuppliesPage,
 })
@@ -187,7 +193,7 @@ function SupplyDetailsModal({
   onEdit: (supply: SupplyRecord) => void
   isStatusUpdating: boolean
 }) {
-  const { tr } = useI18n()
+  const { tr, locale } = useI18n()
   const expectedProfit = supply.total_selling_value - supply.total_cost
 
   const statusLabel = (st: 'pending' | 'received' | 'cancelled') => {
@@ -196,50 +202,113 @@ function SupplyDetailsModal({
     return tr('Очікує', 'Pending')
   }
 
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-4xl w-full overflow-hidden my-8"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-lg font-bold text-slate-900">
-                {supply.reference_number || `${tr('Поставка', 'Supply')} #${supply.id.slice(0, 8).toUpperCase()}`}
-              </h2>
-              <StatusBadge status={supply.status} />
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {tr('Постачальник:', 'Supplier:')}{' '}
-              <strong className="text-slate-700">{supply.supplier?.name}</strong> •{' '}
-              {tr('Призначення:', 'Destination:')}{' '}
-              <strong className="text-slate-700">{supply.location?.name}</strong>
-            </p>
-          </div>
+  const printableData: PrintableWaybillData = useMemo(() => {
+    return {
+      docType: 'supply',
+      referenceNumber: supply.reference_number || supply.id.slice(0, 8).toUpperCase(),
+      date: new Date(supply.created_at).toLocaleString('uk-UA', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      status: supply.status,
+      statusLabel: statusLabel(supply.status),
+      partyFromLabel: tr('Постачальник (Відправник):', 'Supplier (Sender):'),
+      partyFromName: supply.supplier?.name || tr('Невідомий постачальник', 'Unknown Supplier'),
+      partyFromExtra: supply.supplier?.phone ? `${tr('Тел:', 'Phone:')} ${supply.supplier.phone}` : null,
+      partyToLabel: tr('Локація призначення (Одержувач):', 'Destination Location (Receiver):'),
+      partyToName: supply.location?.name || tr('Невідома локація', 'Unknown Location'),
+      notes: supply.notes,
+      completedAt: supply.received_at
+        ? new Date(supply.received_at).toLocaleString('uk-UA', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : null,
+      completedAtLabel: tr('Отримано на склад:', 'Received into stock:'),
+      items: supply.supply_items.map((item) => ({
+        id: item.id,
+        name: item.product?.name || tr('Невідомий товар', 'Unknown Product'),
+        category: item.product?.category_name,
+        sku: item.product?.sku || '-',
+        barcode: item.product?.barcode,
+        quantity: item.quantity,
+        unitPrice: item.cost_price,
+        lineTotal: item.line_cost_total,
+      })),
+      totalUnits: supply.total_units_count,
+      totalAmount: supply.total_cost,
+    }
+  }, [supply, tr])
 
-          <div className="flex items-center gap-2">
-            {supply.status === 'pending' && (
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-4xl w-full overflow-hidden my-8"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-lg font-bold text-slate-900">
+                  {supply.reference_number || `${tr('Поставка', 'Supply')} #${supply.id.slice(0, 8).toUpperCase()}`}
+                </h2>
+                <StatusBadge status={supply.status} />
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {tr('Постачальник:', 'Supplier:')}{' '}
+                <strong className="text-slate-700">{supply.supplier?.name}</strong> •{' '}
+                {tr('Призначення:', 'Destination:')}{' '}
+                <strong className="text-slate-700">{supply.location?.name}</strong>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => onEdit(supply)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer shadow-xs"
+                title={tr('Друк накладної (A4)', 'Print Waybill (A4)')}
               >
-                <Edit3 className="w-3.5 h-3.5" />
-                {tr('Редагувати поставку', 'Edit Pending Supply')}
+                <Printer className="w-3.5 h-3.5 text-slate-600" />
+                <span className="hidden sm:inline">{tr('Друк', 'Print')}</span>
               </button>
-            )}
-            <button
-              onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+              <button
+                type="button"
+                onClick={() => exportSupplyToExcel(supply, locale)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors cursor-pointer shadow-xs"
+                title={tr('Експорт в Excel (.xlsx)', 'Export to Excel (.xlsx)')}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">Excel</span>
+              </button>
+              {supply.status === 'pending' && (
+                <button
+                  type="button"
+                  onClick={() => onEdit(supply)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{tr('Редагувати', 'Edit')}</span>
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-        </div>
 
         <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
           {/* Summary Stats */}
@@ -375,7 +444,11 @@ function SupplyDetailsModal({
         </div>
       </div>
     </div>
-  )
+
+    {/* Clean printable waybill portal rendered to document.body */}
+    <PrintWaybillPortal data={printableData} />
+  </>
+)
 }
 
 /* =========================================================================
@@ -1261,6 +1334,35 @@ function SuppliesPage() {
     enabled: !!token && canManage,
   })
 
+  const viewId = searchParams.view_id
+
+  useEffect(() => {
+    if (!viewId) return
+    const found = supplies.find((s) => s.id === viewId)
+    if (found) {
+      setViewingSupply(found)
+    } else {
+      api
+        .get(`/api/v1/supplies/${viewId}`)
+        .then((res) => {
+          if (res.data) setViewingSupply(res.data)
+        })
+        .catch(() => {})
+    }
+  }, [viewId, supplies])
+
+  const handleCloseViewModal = () => {
+    setViewingSupply(null)
+    if (viewId) {
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          view_id: undefined,
+        }),
+      })
+    }
+  }
+
   const statusMutation = useMutation({
     mutationFn: async ({
       id,
@@ -1636,13 +1738,13 @@ function SuppliesPage() {
           {viewingSupply && (
             <SupplyDetailsModal
               supply={viewingSupply}
-              onClose={() => setViewingSupply(null)}
+              onClose={handleCloseViewModal}
               isStatusUpdating={statusMutation.isPending}
               onStatusChange={(supplyId, newStatus) =>
                 statusMutation.mutate({ id: supplyId, status: newStatus })
               }
               onEdit={(sup) => {
-                setViewingSupply(null)
+                handleCloseViewModal()
                 setEditingSupply(sup)
                 setMode('edit')
               }}

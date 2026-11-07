@@ -776,6 +776,16 @@ function ProductsPage() {
     enabled: !!token,
   })
 
+  // Fetch total count for unfiltered catalog total
+  const { data: allProductsCount = 0 } = useQuery<number>({
+    queryKey: ['products', 'total_count'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/products')
+      return Array.isArray(res.data) ? res.data.length : 0
+    },
+    enabled: !!token,
+  })
+
   // Fetch Categories for dropdown filter
   const { data: categories = [] } = useQuery<CategoryOption[]>({
     queryKey: ['categories', 'flat'],
@@ -912,9 +922,16 @@ function ProductsPage() {
         <div className="flex items-center gap-3">
           <Package className="w-7 h-7 text-blue-600" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
-              {tr('Товари та Залишки', 'Products & Inventory')}
-            </h1>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-bold text-slate-900">
+                {tr('Товари та Залишки', 'Products & Inventory')}
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
+                {searchQuery.trim() || selectedCategoryIds.length > 0 || selectedLocationIds.length > 0
+                  ? `${tr('Показано', 'Showing')}: ${products.length} ${tr('з', 'of')} ${allProductsCount || products.length}`
+                  : `${products.length} ${tr('товарів', 'products')}`}
+              </span>
+            </div>
             <p className="text-sm text-slate-500">
               {tr('Каталог товарів і актуальні залишки по локаціях', 'Catalog items and real-time stock across locations')}
             </p>

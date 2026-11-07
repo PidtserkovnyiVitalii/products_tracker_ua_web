@@ -1360,6 +1360,38 @@ function ManagementPage() {
 
   const canManage = user?.role === 'admin' || user?.role === 'stockkeeper'
 
+  const { data: categoryNodes = [] } = useQuery<CategoryNode[]>({
+    queryKey: ['categories', 'tree'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/categories?tree=true')
+      return res.data
+    },
+    enabled: !!token && canManage,
+  })
+
+  const { data: locations = [] } = useQuery<LocationRecord[]>({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      const res = await api.get('/locations')
+      return res.data
+    },
+    enabled: !!token && canManage,
+  })
+
+  const { data: suppliers = [] } = useQuery<SupplierRecord[]>({
+    queryKey: ['suppliers'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/suppliers')
+      return res.data
+    },
+    enabled: !!token && canManage,
+  })
+
+  const countNodes = (nodes: CategoryNode[]): number => {
+    return nodes.reduce((sum, n) => sum + 1 + (n.children ? countNodes(n.children) : 0), 0)
+  }
+  const categoriesCount = countNodes(categoryNodes)
+
   if (!canManage) {
     return (
       <div className="max-w-2xl mx-auto py-16 px-4 text-center">
@@ -1411,7 +1443,7 @@ function ManagementPage() {
           <button
             type="button"
             onClick={() => navigate({ search: { tab: 'categories' } })}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               tab === 'categories'
                 ? 'bg-white text-blue-600 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1419,11 +1451,18 @@ function ManagementPage() {
           >
             <FolderTree className="w-3.5 h-3.5" />
             <span>{tr('Категорії', 'Categories')}</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                tab === 'categories' ? 'bg-blue-100 text-blue-700' : 'bg-slate-300/80 text-slate-700'
+              }`}
+            >
+              {categoriesCount}
+            </span>
           </button>
           <button
             type="button"
             onClick={() => navigate({ search: { tab: 'locations' } })}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               tab === 'locations'
                 ? 'bg-white text-blue-600 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1431,11 +1470,18 @@ function ManagementPage() {
           >
             <MapPin className="w-3.5 h-3.5" />
             <span>{tr('Локації', 'Locations')}</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                tab === 'locations' ? 'bg-blue-100 text-blue-700' : 'bg-slate-300/80 text-slate-700'
+              }`}
+            >
+              {locations.length}
+            </span>
           </button>
           <button
             type="button"
             onClick={() => navigate({ search: { tab: 'suppliers' } })}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               tab === 'suppliers'
                 ? 'bg-white text-blue-600 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1443,6 +1489,13 @@ function ManagementPage() {
           >
             <Truck className="w-3.5 h-3.5" />
             <span>{tr('Постачальники', 'Suppliers')}</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                tab === 'suppliers' ? 'bg-blue-100 text-blue-700' : 'bg-slate-300/80 text-slate-700'
+              }`}
+            >
+              {suppliers.length}
+            </span>
           </button>
         </div>
       </div>

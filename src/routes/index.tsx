@@ -1,21 +1,73 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { useI18n } from '../i18n/i18n'
 import { api } from '../api/api'
 import {
-  Package,
   Receipt,
-  ArrowRight,
+  Truck,
+  ArrowLeftRight,
+  TrendingUp,
   ShieldCheck,
-  Settings2,
-  FolderTree,
-  MapPin,
+  CheckCircle2,
+  ArrowRight,
+  AlertCircle,
+  User as UserIcon,
+  Eye,
 } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: DashboardPage,
 })
+
+interface DashboardSale {
+  id: string
+  created_at: string
+  status: 'completed' | 'refunded'
+  total_price: number
+  payment_method: 'cash' | 'card'
+  user?: {
+    id: string
+    email: string
+    role: string
+  }
+}
+
+interface DashboardSupply {
+  id: string
+  reference_number?: string | null
+  status: 'pending' | 'received' | 'cancelled'
+  created_at: string
+  supplier?: {
+    id: string
+    name: string
+  } | null
+  location?: {
+    id: string
+    name: string
+  } | null
+  total_cost: number
+  total_items_count: number
+  total_units_count: number
+}
+
+interface DashboardTransfer {
+  id: string
+  reference_number?: string | null
+  status: 'pending' | 'completed' | 'cancelled'
+  created_at: string
+  source_location?: {
+    id: string
+    name: string
+  } | null
+  destination_location?: {
+    id: string
+    name: string
+  } | null
+  total_items_count: number
+  total_units_count: number
+}
 
 function DashboardPage() {
   const user = useAuthStore((state) => state.user)
@@ -24,42 +76,97 @@ function DashboardPage() {
   const isCashier = user?.role === 'cashier'
   const isStaff = user?.role === 'admin' || user?.role === 'stockkeeper'
 
-  // Fetch summary stats for Staff / Admin
-  const { data: productsCount = 0 } = useQuery<number>({
-    queryKey: ['stats', 'products'],
-    queryFn: async () => {
-      const res = await api.get('/api/v1/products')
-      return Array.isArray(res.data) ? res.data.length : 0
-    },
-    enabled: !!token && isStaff,
-  })
-
-  const { data: locationsCount = 0 } = useQuery<number>({
-    queryKey: ['stats', 'locations'],
-    queryFn: async () => {
-      const res = await api.get('/locations')
-      return Array.isArray(res.data) ? res.data.length : 0
-    },
-    enabled: !!token && isStaff,
-  })
-
-  const { data: categoriesCount = 0 } = useQuery<number>({
-    queryKey: ['stats', 'categories'],
-    queryFn: async () => {
-      const res = await api.get('/api/v1/categories')
-      return Array.isArray(res.data) ? res.data.length : 0
-    },
-    enabled: !!token && isStaff,
-  })
-
-  const { data: salesCount = 0 } = useQuery<number>({
-    queryKey: ['stats', 'sales'],
+  // Fetch Sales (Available to all authenticated roles)
+  const { data: sales = [] } = useQuery<DashboardSale[]>({
+    queryKey: ['sales', 'dashboard'],
     queryFn: async () => {
       const res = await api.get('/api/v1/sales')
-      return Array.isArray(res.data) ? res.data.length : 0
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: !!token,
+  })
+
+  // Fetch Supplies (Staff only)
+  const { data: supplies = [] } = useQuery<DashboardSupply[]>({
+    queryKey: ['supplies', 'dashboard'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/supplies')
+      return Array.isArray(res.data) ? res.data : []
     },
     enabled: !!token && isStaff,
   })
+
+  // Fetch Transfers (Staff only)
+  const { data: transfers = [] } = useQuery<DashboardTransfer[]>({
+    queryKey: ['transfers', 'dashboard'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/transfers')
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: !!token && isStaff,
+  })
+
+  // Attention & Sales Calculations
+  const metrics = useMemo(() => {
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+
+    const dayOfWeek = now.getDay() // 0 = Sun, 1 = Mon, ...
+    const diffToMonday = (dayOfWeek + 6) % 7
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday).getTime()
+
+    const completedSales = sales.filter((s) => s.status === 'completed')
+
+    // Today's Sales
+    const todaySales = completedSales.filter((s) => new Date(s.created_at).getTime() >= startOfToday)
+    const todayRevenue = todaySales.reduce((sum, s) => sum + (Number(s.total_price) || 0), 0)
+
+    // This Week's Sales
+    const weekSales = completedSales.filter((s) => new Date(s.created_at).getTime() >= startOfWeek)
+    const weekRevenue = weekSales.reduce((sum, s) => sum + (Number(s.total_price) || 0), 0)
+
+    // Cashier Personal Breakdown
+    const mySales = completedSales.filter(
+      (s) => Boolean(user?.email && s.user?.email === user.email)
+    )
+    const myTodaySales = mySales.filter((s) => new Date(s.created_at).getTime() >= startOfToday)
+    const myTodayRevenue = myTodaySales.reduce((sum, s) => sum + (Number(s.total_price) || 0), 0)
+
+    const myWeekSales = mySales.filter((s) => new Date(s.created_at).getTime() >= startOfWeek)
+    const myWeekRevenue = myWeekSales.reduce((sum, s) => sum + (Number(s.total_price) || 0), 0)
+
+    // Unfinished (pending) supplies & transfers
+    const pendingSupplies = supplies.filter((s) => s.status === 'pending')
+    const pendingTransfers = transfers.filter((t) => t.status === 'pending')
+
+    return {
+      todaySalesCount: todaySales.length,
+      todayRevenue,
+      weekSalesCount: weekSales.length,
+      weekRevenue,
+      myTodaySalesCount: myTodaySales.length,
+      myTodayRevenue,
+      myWeekSalesCount: myWeekSales.length,
+      myWeekRevenue,
+      pendingSupplies,
+      pendingTransfers,
+    }
+  }, [sales, supplies, transfers, user])
+
+  const formatDateTime = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr)
+      return d.toLocaleDateString('uk-UA', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return dateStr
+    }
+  }
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -79,12 +186,12 @@ function DashboardPage() {
             <p className="text-slate-300 text-sm mt-2 max-w-xl">
               {isCashier
                 ? tr(
-                    'Касовий POS-термінал: пошук у каталозі іграшок, перевірка залишків у магазинах, оформлення продажів та повернень.',
-                    'Cashier Point-of-Sale terminal: search toys catalog, verify store stocks, process customer sales, and handle returns.'
+                    'Касовий термінал: аналітика продажів за сьогодні та поточний тиждень, оформлення замовлень і повернень.',
+                    'Cashier POS terminal: sales analytics for today and this week, fast order checkout, and refunds.'
                   )
                 : tr(
-                    'Централізована панель управління: каталог товарів, дерево категорій, залишки на складах і в магазинах та замовлення клієнтів.',
-                    'Centralized operational dashboard: catalog inventory, category tree taxonomy, physical location stocks, and customer orders.'
+                    'Оперативний центр: контроль продажів за день і тиждень, незавершені поставки та внутрішні переміщення.',
+                    'Operations center: track daily and weekly sales, unreceived supplier deliveries, and pending warehouse transfers.'
                   )}
             </p>
           </div>
@@ -112,197 +219,385 @@ function DashboardPage() {
         </div>
       </div>
 
-      {/* Staff Operational Stats KPI Bar */}
-      {token && isStaff && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
-              <Package className="w-6 h-6" />
+      {/* Attention KPI Metrics Bar */}
+      {token && (
+        <div
+          className={`grid gap-4 mb-8 ${
+            isCashier ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+          }`}
+        >
+          {/* Today's Sales */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                {tr('Продажі сьогодні', 'Sales Today')}
+              </span>
+              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+                <Receipt className="w-5 h-5" />
+              </div>
             </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {tr('Товари', 'Products')}
+              <div className="text-2xl font-black text-slate-900">
+                ₴{metrics.todayRevenue.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <div className="text-2xl font-black text-slate-900 mt-0.5">{productsCount}</div>
+              <div className="text-xs font-medium text-slate-500 mt-1 flex items-center gap-1.5">
+                <span className="font-bold text-slate-700">{metrics.todaySalesCount}</span>
+                <span>{tr('замовлень', 'orders')}</span>
+              </div>
             </div>
+
+            {isCashier && (
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span className="text-slate-500 flex items-center gap-1">
+                  <UserIcon className="w-3.5 h-3.5 text-blue-600" />
+                  {tr('Мої продажі:', 'My sales:')}
+                </span>
+                <span className="font-bold text-blue-600">
+                  {metrics.myTodaySalesCount} {tr('замовл.', 'ord.')} (₴
+                  {metrics.myTodayRevenue.toLocaleString('uk-UA', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                  )
+                </span>
+              </div>
+            )}
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
-              <MapPin className="w-6 h-6" />
+          {/* This Week's Sales */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                {tr('Продажі за тиждень', 'Sales This Week')}
+              </span>
+              <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+                <TrendingUp className="w-5 h-5" />
+              </div>
             </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {tr('Локації', 'Locations')}
+              <div className="text-2xl font-black text-slate-900">
+                ₴{metrics.weekRevenue.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <div className="text-2xl font-black text-slate-900 mt-0.5">{locationsCount}</div>
+              <div className="text-xs font-medium text-slate-500 mt-1 flex items-center gap-1.5">
+                <span className="font-bold text-slate-700">{metrics.weekSalesCount}</span>
+                <span>{tr('замовлень', 'orders')}</span>
+              </div>
             </div>
+
+            {isCashier && (
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span className="text-slate-500 flex items-center gap-1">
+                  <UserIcon className="w-3.5 h-3.5 text-blue-600" />
+                  {tr('Мої продажі:', 'My sales:')}
+                </span>
+                <span className="font-bold text-blue-600">
+                  {metrics.myWeekSalesCount} {tr('замовл.', 'ord.')} (₴
+                  {metrics.myWeekRevenue.toLocaleString('uk-UA', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                  )
+                </span>
+              </div>
+            )}
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-purple-50 text-purple-600">
-              <FolderTree className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {tr('Категорії', 'Categories')}
+          {/* Pending Supplies (Staff Only) */}
+          {!isCashier && (
+            <Link
+              to="/supplies"
+              search={{ status: 'pending' }}
+              className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-amber-300 hover:shadow-md transition-all flex flex-col justify-between group"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  {tr('Поставки в обробці', 'Pending Supplies')}
+                </span>
+                <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 group-hover:scale-110 transition-transform">
+                  <Truck className="w-5 h-5" />
+                </div>
               </div>
-              <div className="text-2xl font-black text-slate-900 mt-0.5">{categoriesCount}</div>
-            </div>
-          </div>
+              <div>
+                <div className="text-2xl font-black text-slate-900">{metrics.pendingSupplies.length}</div>
+                <div className="text-xs font-medium text-slate-500 mt-1 flex items-center justify-between">
+                  <span>{tr('Очікують оприбуткування', 'Awaiting receipt')}</span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all" />
+                </div>
+              </div>
+            </Link>
+          )}
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-amber-50 text-amber-600">
-              <Receipt className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {tr('Продажі', 'Sales Orders')}
+          {/* Pending Movements (Staff Only) */}
+          {!isCashier && (
+            <Link
+              to="/movements"
+              search={{ status: 'pending' }}
+              className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-purple-300 hover:shadow-md transition-all flex flex-col justify-between group"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  {tr('Переміщення в дорозі', 'Pending Transfers')}
+                </span>
+                <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600 group-hover:scale-110 transition-transform">
+                  <ArrowLeftRight className="w-5 h-5" />
+                </div>
               </div>
-              <div className="text-2xl font-black text-slate-900 mt-0.5">{salesCount}</div>
-            </div>
-          </div>
+              <div>
+                <div className="text-2xl font-black text-slate-900">{metrics.pendingTransfers.length}</div>
+                <div className="text-xs font-medium text-slate-500 mt-1 flex items-center justify-between">
+                  <span>{tr('Очікують підтвердження', 'Awaiting confirmation')}</span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
+                </div>
+              </div>
+            </Link>
+          )}
         </div>
       )}
 
-      {/* Cashier Focused Action Cards */}
+      {/* Staff "Attention Required" Section */}
+      {token && !isCashier && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">
+                {tr('Потребує уваги', 'Attention Required')}
+              </h2>
+            </div>
+            <span className="text-xs font-semibold text-slate-500">
+              {metrics.pendingSupplies.length + metrics.pendingTransfers.length}{' '}
+              {tr('активних завдань', 'pending tasks')}
+            </span>
+          </div>
+
+          {metrics.pendingSupplies.length === 0 && metrics.pendingTransfers.length === 0 ? (
+            <div className="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-xs text-center">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800">
+                {tr('Все виконано та актуально', 'All Caught Up')}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                {tr(
+                  'Наразі немає незавершених поставок від постачальників або відкритих переміщень між складами.',
+                  'No pending supplier receipts or stock movements requiring attention at this time.'
+                )}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Unfinished Supplies Panel */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                  <div className="flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-amber-600" />
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      {tr('Незавершені поставки', 'Unfinished Supplies')}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">
+                      {metrics.pendingSupplies.length}
+                    </span>
+                  </div>
+                  <Link
+                    to="/supplies"
+                    search={{ status: 'pending' }}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <span>{tr('Всі поставки', 'All supplies')}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+
+                <div className="divide-y divide-slate-100 flex-1">
+                  {metrics.pendingSupplies.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-400">
+                      {tr('Немає відкритих поставок', 'No open supplies')}
+                    </div>
+                  ) : (
+                    metrics.pendingSupplies.slice(0, 5).map((supply) => (
+                      <Link
+                        key={supply.id}
+                        to="/supplies"
+                        search={{ status: 'pending', view_id: supply.id }}
+                        className="p-3.5 hover:bg-amber-50/60 transition-colors flex items-center justify-between gap-4 group cursor-pointer"
+                        title={tr('Відкрити деталі поставки', 'Open supply details')}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                              {supply.reference_number || `#${supply.id.slice(0, 8)}`}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/60">
+                              {tr('Очікує', 'Pending')}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 truncate">
+                            <span className="font-semibold text-slate-700">{supply.supplier?.name || '—'}</span>
+                            <span>&bull;</span>
+                            <span>{supply.location?.name || '—'}</span>
+                            <span>&bull;</span>
+                            <span className="text-[11px] text-slate-400">{formatDateTime(supply.created_at)}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <div className="text-right">
+                            <div className="text-xs font-bold text-slate-900">
+                              ₴{supply.total_cost.toFixed(2)}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {supply.total_units_count} {tr('шт.', 'units')}
+                            </div>
+                          </div>
+                          <Eye className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
+                        </div>
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Unfinished Transfers Panel */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                  <div className="flex items-center gap-2">
+                    <ArrowLeftRight className="w-4 h-4 text-purple-600" />
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      {tr('Переміщення в дорозі', 'Transfers in Transit')}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800">
+                      {metrics.pendingTransfers.length}
+                    </span>
+                  </div>
+                  <Link
+                    to="/movements"
+                    search={{ status: 'pending' }}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <span>{tr('Всі переміщення', 'All transfers')}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+
+                <div className="divide-y divide-slate-100 flex-1">
+                  {metrics.pendingTransfers.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-400">
+                      {tr('Немає відкритих переміщень', 'No open transfers')}
+                    </div>
+                  ) : (
+                    metrics.pendingTransfers.slice(0, 5).map((transfer) => (
+                      <Link
+                        key={transfer.id}
+                        to="/movements"
+                        search={{ status: 'pending', view_id: transfer.id }}
+                        className="p-3.5 hover:bg-purple-50/60 transition-colors flex items-center justify-between gap-4 group cursor-pointer"
+                        title={tr('Відкрити деталі переміщення', 'Open movement details')}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                              {transfer.reference_number || `#${transfer.id.slice(0, 8)}`}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
+                              {tr('В дорозі', 'In Transit')}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 truncate">
+                            <span className="font-semibold text-slate-700">
+                              {transfer.source_location?.name || '—'}
+                            </span>
+                            <span className="text-slate-400">&rarr;</span>
+                            <span className="font-semibold text-slate-700">
+                              {transfer.destination_location?.name || '—'}
+                            </span>
+                            <span>&bull;</span>
+                            <span className="text-[11px] text-slate-400">{formatDateTime(transfer.created_at)}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <div className="text-right">
+                            <div className="text-xs font-bold text-slate-900">
+                              {transfer.total_units_count} {tr('шт.', 'units')}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {transfer.total_items_count} {tr('позицій', 'items')}
+                            </div>
+                          </div>
+                          <Eye className="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors" />
+                        </div>
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Cashier Recent Sales & Quick Access */}
       {token && isCashier && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Link
-            to="/sales"
-            className="group p-8 bg-white border border-slate-200/80 rounded-3xl shadow-xs hover:shadow-xl hover:border-emerald-400 transition-all flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Receipt className="w-7 h-7" />
-              </div>
-              <div className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold mb-2">
-                {tr('Касовий термінал', 'Point of Sale')}
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-between">
-                <span>{tr('Продажі та Каса', 'Sales & Checkout')}</span>
-                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
-              </h2>
-              <p className="text-slate-500 text-sm mt-3 leading-relaxed">
-                {tr(
-                  'Створюйте замовлення зі скануванням штрихкодів камерою, застосовуйте знижки, приймайте оплату готівкою чи карткою та оформлюйте повернення.',
-                  'Create new customer orders with camera barcode scanning, apply discounts, choose cash/card payments, and process receipt refunds.'
-                )}
-              </p>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                {tr('Останні оформлені чеки', 'Recent Checkout Receipts')}
+              </span>
             </div>
-            <div className="mt-8 flex items-center gap-2 text-sm font-bold text-emerald-600">
-              <span>{tr('Відкрити касовий термінал', 'Open Sales Terminal')}</span>
-              <span>&rarr;</span>
-            </div>
-          </Link>
+            <Link
+              to="/sales"
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+            >
+              <span>{tr('Відкрити касу (POS)', 'Open Sales (POS)')}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
 
-          <Link
-            to="/products"
-            className="group p-8 bg-white border border-slate-200/80 rounded-3xl shadow-xs hover:shadow-xl hover:border-blue-400 transition-all flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Package className="w-7 h-7" />
+          <div className="divide-y divide-slate-100">
+            {sales.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">
+                {tr('Продажів ще не було', 'No sales recorded yet')}
               </div>
-              <div className="inline-block px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold mb-2">
-                {tr('Каталог і залишки', 'Catalog & Stock')}
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900 flex items-center justify-between">
-                <span>{tr('Каталог товарів', 'Products Catalog')}</span>
-                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-              </h2>
-              <p className="text-slate-500 text-sm mt-3 leading-relaxed">
-                {tr(
-                  'Шукайте та переглядайте іграшки, фільтруйте за категоріями та магазинами, перевіряйте наявність і додавайте товари до кошика.',
-                  'Search and review toys, filter by multiple categories and store locations, verify unit availability, and add items directly to cart.'
-                )}
-              </p>
-            </div>
-            <div className="mt-8 flex items-center gap-2 text-sm font-bold text-blue-600">
-              <span>{tr('Переглянути каталог', 'Browse Catalog')}</span>
-              <span>&rarr;</span>
-            </div>
-          </Link>
-        </div>
-      )}
+            ) : (
+              sales.slice(0, 5).map((sale) => (
+                <div
+                  key={sale.id}
+                  className="p-3.5 hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-4"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-900">#{sale.id.slice(0, 8)}</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          sale.status === 'completed'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                            : 'bg-red-50 text-red-700 border border-red-200/60'
+                        }`}
+                      >
+                        {sale.status === 'completed' ? tr('Оплачено', 'Paid') : tr('Повернення', 'Refunded')}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                      <span>{sale.payment_method === 'cash' ? tr('Готівка', 'Cash') : tr('Картка', 'Card')}</span>
+                      <span>&bull;</span>
+                      <span className="text-[11px] text-slate-400">{formatDateTime(sale.created_at)}</span>
+                    </div>
+                  </div>
 
-      {/* Staff (Stockkeeper / Admin) 3 Primary Action Cards */}
-      {token && isStaff && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link
-            to="/products"
-            className="group p-6 bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:shadow-lg hover:border-blue-400 transition-all flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <Package className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-lg flex items-center justify-between">
-                <span>{tr('Товари та Залишки', 'Products & Inventory')}</span>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-              </h3>
-              <p className="text-slate-500 text-xs mt-2 leading-relaxed">
-                {tr(
-                  'Керуйте позиціями каталогу, редагуйте ціни й описи, коригуйте складські залишки та друкуйте етикетки зі штрихкодами.',
-                  'Manage catalog items, edit prices & descriptions, adjust warehouse stocks, and print barcode price stickers.'
-                )}
-              </p>
-            </div>
-            <div className="mt-6 text-xs font-bold text-blue-600 flex items-center gap-1">
-              <span>{tr('Керувати товарами', 'Manage Products')}</span>
-              <span>&rarr;</span>
-            </div>
-          </Link>
-
-          <Link
-            to="/sales"
-            className="group p-6 bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:shadow-lg hover:border-emerald-400 transition-all flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <Receipt className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-lg flex items-center justify-between">
-                <span>{tr('Продажі та Чеки', 'Sales & Orders')}</span>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
-              </h3>
-              <p className="text-slate-500 text-xs mt-2 leading-relaxed">
-                {tr(
-                  'Оформлюйте продажі клієнтам, відстежуйте виручку, друкуйте чеки 80мм/A4 та виконуйте повернення з відновленням залишків.',
-                  'Process customer sales, track transaction revenue, print 80mm/A4 receipts, and perform stock-restoring refunds.'
-                )}
-              </p>
-            </div>
-            <div className="mt-6 text-xs font-bold text-emerald-600 flex items-center gap-1">
-              <span>{tr('Переглянути продажі', 'View Sales')}</span>
-              <span>&rarr;</span>
-            </div>
-          </Link>
-
-          <Link
-            to="/management"
-            className="group p-6 bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:shadow-lg hover:border-purple-400 transition-all flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <Settings2 className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-lg flex items-center justify-between">
-                <span>{tr('Управління', 'Management')}</span>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
-              </h3>
-              <p className="text-slate-500 text-xs mt-2 leading-relaxed">
-                {tr(
-                  'Налаштовуйте ієрархічне дерево категорій, фізичні магазини, склади та постачальників по всій Україні.',
-                  'Configure hierarchical category tree taxonomy and physical store & warehouse locations across Ukraine.'
-                )}
-              </p>
-            </div>
-            <div className="mt-6 text-xs font-bold text-purple-600 flex items-center gap-1">
-              <span>{tr('Налаштувати структуру', 'Configure Structure')}</span>
-              <span>&rarr;</span>
-            </div>
-          </Link>
+                  <div className="text-right">
+                    <div className="text-sm font-bold text-slate-900">
+                      ₴{Number(sale.total_price).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>

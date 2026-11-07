@@ -1,5 +1,6 @@
-import { createRootRoute, Link, Outlet, useNavigate } from '@tanstack/react-router'
+import { createRootRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { useState, useRef, useEffect } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
 import { useI18n } from '../i18n/i18n'
@@ -14,6 +15,9 @@ import {
   Truck,
   ArrowLeftRight,
   Globe,
+  Boxes,
+  ChevronDown,
+  Check,
 } from 'lucide-react'
 
 export const Route = createRootRoute({
@@ -29,7 +33,29 @@ function RootComponent() {
   const navigate = useNavigate()
   const { locale, setLocale, tr, tRole } = useI18n()
 
+  const currentPath = useRouterState({ select: (s) => s.location.pathname })
   const isCashier = user?.role === 'cashier'
+
+  const [isOperationsOpen, setIsOperationsOpen] = useState(false)
+  const [isLocaleOpen, setIsLocaleOpen] = useState(false)
+
+  const operationsMenuRef = useRef<HTMLDivElement>(null)
+  const localeMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (operationsMenuRef.current && !operationsMenuRef.current.contains(e.target as Node)) {
+        setIsOperationsOpen(false)
+      }
+      if (localeMenuRef.current && !localeMenuRef.current.contains(e.target as Node)) {
+        setIsLocaleOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const isOperationsActive = ['/sales', '/supplies', '/movements'].some((p) => currentPath.startsWith(p))
 
   const handleLogout = () => {
     logout()
@@ -67,31 +93,65 @@ function RootComponent() {
                   <Package className="w-4 h-4" />
                   {tr('Товари', 'Products')}
                 </Link>
-                <Link
-                  to="/sales"
-                  className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
-                >
-                  <Receipt className="w-4 h-4" />
-                  {tr('Продажі', 'Sales')}
-                </Link>
-                {!isCashier && (
+
+                {/* Operations Dropdown for Admin/Stockkeeper, or direct Sales link for Cashier */}
+                {isCashier ? (
                   <Link
-                    to="/supplies"
+                    to="/sales"
                     className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
                   >
-                    <Truck className="w-4 h-4" />
-                    {tr('Поставки', 'Supplies')}
+                    <Receipt className="w-4 h-4 text-emerald-600" />
+                    {tr('Продажі', 'Sales')}
                   </Link>
+                ) : (
+                  <div className="relative" ref={operationsMenuRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsOperationsOpen(!isOperationsOpen)}
+                      className={`px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center gap-1.5 cursor-pointer ${
+                        isOperationsActive ? 'bg-slate-100 text-blue-600 font-semibold' : ''
+                      }`}
+                    >
+                      <Boxes className="w-4 h-4" />
+                      <span>{tr('Операції', 'Operations')}</span>
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
+                          isOperationsOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {isOperationsOpen && (
+                      <div className="absolute top-full left-0 mt-1.5 w-52 bg-white border border-slate-200/90 rounded-2xl shadow-xl py-1.5 z-50">
+                        <Link
+                          to="/sales"
+                          onClick={() => setIsOperationsOpen(false)}
+                          className="px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-50 flex items-center gap-2.5 transition-colors [&.active]:text-blue-600 [&.active]:bg-blue-50/60"
+                        >
+                          <Receipt className="w-4 h-4 text-emerald-600" />
+                          <span>{tr('Продажі', 'Sales')}</span>
+                        </Link>
+                        <Link
+                          to="/supplies"
+                          onClick={() => setIsOperationsOpen(false)}
+                          className="px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-50 flex items-center gap-2.5 transition-colors [&.active]:text-blue-600 [&.active]:bg-blue-50/60"
+                        >
+                          <Truck className="w-4 h-4 text-amber-600" />
+                          <span>{tr('Поставки', 'Supplies')}</span>
+                        </Link>
+                        <Link
+                          to="/movements"
+                          onClick={() => setIsOperationsOpen(false)}
+                          className="px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-50 flex items-center gap-2.5 transition-colors [&.active]:text-blue-600 [&.active]:bg-blue-50/60"
+                        >
+                          <ArrowLeftRight className="w-4 h-4 text-blue-600" />
+                          <span>{tr('Переміщення', 'Movements')}</span>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 )}
-                {!isCashier && (
-                  <Link
-                    to="/movements"
-                    className="px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors [&.active]:bg-slate-100 [&.active]:text-blue-600 flex items-center gap-2"
-                  >
-                    <ArrowLeftRight className="w-4 h-4" />
-                    {tr('Переміщення', 'Movements')}
-                  </Link>
-                )}
+
                 {!isCashier && (
                   <Link
                     to="/management"
@@ -106,34 +166,57 @@ function RootComponent() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Compact Language Switcher (UA / EN) */}
-            <div
-              className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80"
-              title={tr('Змінити мову інтерфейсу', 'Switch interface language')}
-            >
-              <Globe className="w-3.5 h-3.5 text-slate-400 ml-2 mr-1 hidden sm:block" />
+            {/* Compact Locale Dropdown */}
+            <div className="relative" ref={localeMenuRef}>
               <button
                 type="button"
-                onClick={() => setLocale('uk')}
-                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                  locale === 'uk'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
+                onClick={() => setIsLocaleOpen(!isLocaleOpen)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                title={tr('Змінити мову інтерфейсу', 'Switch interface language')}
               >
-                UA
+                <Globe className="w-3.5 h-3.5 text-slate-400" />
+                <span>{locale === 'uk' ? 'UA' : 'EN'}</span>
+                <ChevronDown
+                  className={`w-3 h-3 text-slate-400 transition-transform ${isLocaleOpen ? 'rotate-180' : ''}`}
+                />
               </button>
-              <button
-                type="button"
-                onClick={() => setLocale('en')}
-                className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                  locale === 'en'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                EN
-              </button>
+
+              {isLocaleOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-36 bg-white border border-slate-200/90 rounded-2xl shadow-xl py-1.5 z-50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocale('uk')
+                      setIsLocaleOpen(false)
+                    }}
+                    className={`w-full px-3 py-1.5 text-xs text-left font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                      locale === 'uk' ? 'text-blue-600 bg-blue-50/60 font-bold' : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>🇺🇦</span>
+                      <span>Українська</span>
+                    </span>
+                    {locale === 'uk' && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocale('en')
+                      setIsLocaleOpen(false)
+                    }}
+                    className={`w-full px-3 py-1.5 text-xs text-left font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                      locale === 'en' ? 'text-blue-600 bg-blue-50/60 font-bold' : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>🇬🇧</span>
+                      <span>English</span>
+                    </span>
+                    {locale === 'en' && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                  </button>
+                </div>
+              )}
             </div>
 
             {token ? (

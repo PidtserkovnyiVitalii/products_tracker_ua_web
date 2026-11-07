@@ -1,10 +1,12 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useMemo, useEffect } from 'react'
 import { api } from '../api/api'
 import { useAuthStore } from '../store/authStore'
 import { useI18n } from '../i18n/i18n'
 import { BarcodeScannerModal } from '../components/BarcodeScannerModal'
+import { PrintWaybillPortal, type PrintableWaybillData } from '../components/PrintWaybillPortal'
+import { exportMovementToExcel } from '../utils/waybillExport'
 import {
   ArrowLeftRight,
   Plus,
@@ -23,6 +25,8 @@ import {
   ArrowRight,
   AlertCircle,
   X,
+  Printer,
+  FileSpreadsheet,
 } from 'lucide-react'
 
 export const Route = createFileRoute('/movements')({
@@ -35,6 +39,21 @@ export const Route = createFileRoute('/movements')({
       throw redirect({ to: '/products' })
     }
   },
+  validateSearch: (
+    search: Record<string, unknown>
+  ): {
+    status?: string
+    query?: string
+    source_location_id?: string
+    destination_location_id?: string
+    view_id?: string
+  } => ({
+    status: (search.status as string) || undefined,
+    query: (search.query as string) || undefined,
+    source_location_id: (search.source_location_id as string) || undefined,
+    destination_location_id: (search.destination_location_id as string) || undefined,
+    view_id: (search.view_id as string) || undefined,
+  }),
   component: MovementsPage,
 })
 
@@ -149,6 +168,8 @@ function StatusBadge({ status }: { status: TransferRecord['status'] }) {
 function MovementsPage() {
   const { tr } = useI18n()
   const queryClient = useQueryClient()
+  const searchParams = Route.useSearch()
+  const navigate = useNavigate({ from: '/movements' })
 
   // View mode: 'list' | 'create' | 'edit'
   const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit'>('list')
@@ -156,11 +177,23 @@ function MovementsPage() {
   const [selectedTransfer, setSelectedTransfer] = useState<TransferRecord | null>(null)
 
   // List filters
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filterSourceId, setFilterSourceId] = useState('')
-  const [filterDestinationId, setFilterDestinationId] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
+  const [searchQuery, setSearchQuery] = useState(searchParams.query || '')
+  const [filterSourceId, setFilterSourceId] = useState(searchParams.source_location_id || '')
+  const [filterDestinationId, setFilterDestinationId] = useState(searchParams.destination_location_id || '')
+  const [filterStatus, setFilterStatus] = useState(searchParams.status || '')
   const [statusError, setStatusError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setFilterStatus(searchParams.status || '')
+    setSearchQuery(searchParams.query || '')
+    setFilterSourceId(searchParams.source_location_id || '')
+    setFilterDestinationId(searchParams.destination_location_id || '')
+  }, [
+    searchParams.status,
+    searchParams.query,
+    searchParams.source_location_id,
+    searchParams.destination_location_id,
+  ])
 
   const { data: transfers = [], isLoading } = useQuery<TransferRecord[]>({
     queryKey: ['transfers', searchQuery, filterSourceId, filterDestinationId, filterStatus],
@@ -174,6 +207,30 @@ function MovementsPage() {
       return res.data
     },
   })
+
+  const viewId = searchParams.view_id
+
+  useEffect(() => {
+    if (!viewId) return
+    const found = transfers.find((t) => t.id === viewId)
+    if (found) {
+      setSelectedTransfer(found)
+    } else {
+      api
+        .get(`/api/v1/transfers/${viewId}`)
+        .then((res) => {
+          if (res.data) setSelectedTransfer(res.data)
+        })
+        .catch(() => {})
+    }
+  }, [viewId, transfers])
+
+  const handleCloseTransferModal = () => {
+    setSelectedTransfer(null)
+    if (viewId) {
+      navigate({ search: (prev) => ({ ...prev, view_id: undefined }) })
+    }
+  }
 
   const { data: locations = [] } = useQuery<LocationItem[]>({
     queryKey: ['locations'],
@@ -207,10 +264,7 @@ function MovementsPage() {
     const totalCount = transfers.length
     const completedCount = transfers.filter((t) => t.status === 'completed').length
     const pendingCount = transfers.filter((t) => t.status === 'pending').length
-    const totalUnitsMoved = transfers
-      .filter((t) => t.status === 'completed')
-      .reduce((acc, t) => acc + t.total_units_count, 0)
-    return { totalCount, completedCount, pendingCount, totalUnitsMoved }
+    return { totalCount, completedCount, pendingCount }
   }, [transfers])
 
   if (viewMode === 'create' || viewMode === 'edit') {
@@ -264,30 +318,54 @@ function MovementsPage() {
       </div>
 
       {/* KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div
+          onClick={() => {
+            setFilterStatus('')
+            navigate({ search: (prev) => ({ ...prev, status: undefined }) })
+          }}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+            !filterStatus
+              ? 'bg-blue-50/40 border-blue-300 shadow-xs'
+              : 'bg-white border-slate-200/80 shadow-xs hover:border-slate-300'
+          }`}
+        >
           <div className="text-xs font-medium text-slate-500">{tr('Усього переміщень', 'Total Movements')}</div>
           <div className="text-2xl font-bold text-slate-900 mt-1">{stats.totalCount}</div>
         </div>
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div
+          onClick={() => {
+            const next = filterStatus === 'completed' ? '' : 'completed'
+            setFilterStatus(next)
+            navigate({ search: (prev) => ({ ...prev, status: next || undefined }) })
+          }}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+            filterStatus === 'completed'
+              ? 'bg-emerald-50/50 border-emerald-400 ring-2 ring-emerald-200 shadow-xs'
+              : 'bg-white border-slate-200/80 shadow-xs hover:border-emerald-300'
+          }`}
+        >
           <div className="text-xs font-medium text-slate-500">
             {tr('Завершені переміщення', 'Completed Transfers')}
           </div>
           <div className="text-2xl font-bold text-emerald-600 mt-1">{stats.completedCount}</div>
         </div>
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div
+          onClick={() => {
+            const next = filterStatus === 'pending' ? '' : 'pending'
+            setFilterStatus(next)
+            navigate({ search: (prev) => ({ ...prev, status: next || undefined }) })
+          }}
+          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+            filterStatus === 'pending'
+              ? 'bg-amber-50/50 border-amber-400 ring-2 ring-amber-200 shadow-xs'
+              : 'bg-white border-slate-200/80 shadow-xs hover:border-amber-300'
+          }`}
+        >
           <div className="text-xs font-medium text-slate-500">
             {tr('Очікують виконання', 'Pending Transfers')}
           </div>
           <div className="text-2xl font-bold text-amber-600 mt-1">{stats.pendingCount}</div>
-        </div>
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">
-            {tr('Переміщено одиниць', 'Total Units Moved')}
-          </div>
-          <div className="text-2xl font-bold text-blue-600 mt-1">
-            {stats.totalUnitsMoved} {tr('шт.', 'pcs')}
-          </div>
         </div>
       </div>
 
@@ -310,7 +388,11 @@ function MovementsPage() {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value
+              setSearchQuery(val)
+              navigate({ search: (prev) => ({ ...prev, query: val.trim() || undefined }) })
+            }}
             placeholder={tr(
               'Пошук за номером, назвою локації або примітками...',
               'Search by reference #, location name, or notes...'
@@ -321,7 +403,11 @@ function MovementsPage() {
 
         <select
           value={filterSourceId}
-          onChange={(e) => setFilterSourceId(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value
+            setFilterSourceId(val)
+            navigate({ search: (prev) => ({ ...prev, source_location_id: val || undefined }) })
+          }}
           className="px-3.5 py-2 rounded-xl border border-slate-200 text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">{tr('Звідки: Усі локації', 'From: All Locations')}</option>
@@ -334,7 +420,11 @@ function MovementsPage() {
 
         <select
           value={filterDestinationId}
-          onChange={(e) => setFilterDestinationId(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value
+            setFilterDestinationId(val)
+            navigate({ search: (prev) => ({ ...prev, destination_location_id: val || undefined }) })
+          }}
           className="px-3.5 py-2 rounded-xl border border-slate-200 text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">{tr('Куди: Усі локації', 'To: All Locations')}</option>
@@ -347,7 +437,11 @@ function MovementsPage() {
 
         <select
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value
+            setFilterStatus(val)
+            navigate({ search: (prev) => ({ ...prev, status: val || undefined }) })
+          }}
           className="px-3.5 py-2 rounded-xl border border-slate-200 text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">{tr('Усі статуси', 'All Statuses')}</option>
@@ -511,7 +605,7 @@ function MovementsPage() {
       {selectedTransfer && (
         <MovementDetailsModal
           transfer={selectedTransfer}
-          onClose={() => setSelectedTransfer(null)}
+          onClose={handleCloseTransferModal}
           onStatusChange={(newStatus) =>
             statusMutation.mutate({ id: selectedTransfer.id, status: newStatus })
           }
@@ -533,44 +627,121 @@ function MovementDetailsModal({
   onStatusChange: (status: TransferRecord['status']) => void
   isUpdatingStatus: boolean
 }) {
-  const { tr } = useI18n()
+  const { tr, locale } = useI18n()
+
+  const statusLabel = (st: TransferRecord['status']) => {
+    if (st === 'completed') return tr('Завершено', 'Completed')
+    if (st === 'cancelled') return tr('Скасовано', 'Cancelled')
+    return tr('Очікує', 'Pending')
+  }
+
+  const printableData: PrintableWaybillData = useMemo(() => {
+    return {
+      docType: 'movement',
+      referenceNumber: transfer.reference_number || transfer.id.slice(0, 8).toUpperCase(),
+      date: new Date(transfer.created_at).toLocaleString('uk-UA', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      status: transfer.status,
+      statusLabel: statusLabel(transfer.status),
+      partyFromLabel: tr('З локації (Джерело):', 'Source Location (From):'),
+      partyFromName: transfer.source_location?.name || tr('Невідома локація', 'Unknown Location'),
+      partyFromExtra: transfer.source_location?.location_type === 'warehouse'
+        ? tr('Склад', 'Warehouse')
+        : tr('Магазин', 'Store'),
+      partyToLabel: tr('До локації (Призначення):', 'Destination Location (To):'),
+      partyToName: transfer.destination_location?.name || tr('Невідома локація', 'Unknown Location'),
+      partyToExtra: transfer.destination_location?.location_type === 'warehouse'
+        ? tr('Склад', 'Warehouse')
+        : tr('Магазин', 'Store'),
+      notes: transfer.notes,
+      completedAt: transfer.completed_at
+        ? new Date(transfer.completed_at).toLocaleString('uk-UA', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : null,
+      completedAtLabel: tr('Завершено переміщення:', 'Movement completed:'),
+      items: transfer.transfer_items.map((item) => ({
+        id: item.id,
+        name: item.product?.name || tr('Невідомий товар', 'Unknown Product'),
+        category: item.product?.category_name,
+        sku: item.product?.sku || '-',
+        barcode: item.product?.barcode,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        lineTotal: item.line_retail_total,
+      })),
+      totalUnits: transfer.total_units_count,
+      totalAmount: transfer.total_retail_value,
+    }
+  }, [transfer, tr])
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-lg font-bold text-slate-900">
-                {transfer.reference_number || `${tr('Переміщення', 'Movement')} #${transfer.id.slice(0, 8)}`}
-              </h2>
-              <StatusBadge status={transfer.status} />
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {tr('Створено', 'Created')}{' '}
-              {new Date(transfer.created_at).toLocaleString('nl-NL', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-              {transfer.completed_at &&
-                ` • ${tr('Завершено', 'Completed')} ${new Date(transfer.completed_at).toLocaleString('nl-NL', {
+    <>
+      <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-lg font-bold text-slate-900">
+                  {transfer.reference_number || `${tr('Переміщення', 'Movement')} #${transfer.id.slice(0, 8)}`}
+                </h2>
+                <StatusBadge status={transfer.status} />
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {tr('Створено', 'Created')}{' '}
+                {new Date(transfer.created_at).toLocaleString('nl-NL', {
                   day: '2-digit',
                   month: '2-digit',
                   year: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit',
-                })}`}
-            </p>
+                })}
+                {transfer.completed_at &&
+                  ` • ${tr('Завершено', 'Completed')} ${new Date(transfer.completed_at).toLocaleString('nl-NL', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}`}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer shadow-xs"
+                title={tr('Друк накладної (A4)', 'Print Waybill (A4)')}
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-600" />
+                <span className="hidden sm:inline">{tr('Друк', 'Print')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => exportMovementToExcel(transfer, locale)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors cursor-pointer shadow-xs"
+                title={tr('Експорт в Excel (.xlsx)', 'Export to Excel (.xlsx)')}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">Excel</span>
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-200/60 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
         <div className="p-6 overflow-y-auto space-y-6">
           {/* Metadata Grid */}
@@ -703,7 +874,11 @@ function MovementDetailsModal({
         </div>
       </div>
     </div>
-  )
+
+    {/* Clean printable waybill portal rendered to document.body */}
+    <PrintWaybillPortal data={printableData} />
+  </>
+)
 }
 
 function MovementWorkspace({
